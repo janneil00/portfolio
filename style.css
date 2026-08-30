@@ -1,4 +1,33 @@
+html {
+  scroll-behavior: smooth;
+}
 
+/* Optional: if you have a fixed/sticky navbar, offset the scroll 
+   so sections don't end up hidden behind it */
+section {
+  scroll-margin-top: 70px; /* match your navbar's height */
+}
+
+.navbar {
+  position: fixed;
+  top: 0;
+  width: 100%;
+  background: #222;
+  padding: 15px 0;
+  text-align: center;
+  z-index: 100;
+}
+
+.navbar a {
+  color: #fff;
+  text-decoration: none;
+  margin: 0 15px;
+  font-weight: 500;
+}
+
+.navbar a:hover {
+  color: #4ade80;
+}
 :root {
       --background: #090c13;
       --surface: #10151f;
