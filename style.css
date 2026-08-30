@@ -511,6 +511,56 @@
       color: var(--text-muted);
       font-size: 0.82rem;
     }
+.grid{
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 14px;
+  padding: 18px 0 30px;
+}
+.card{
+  grid-column: span 4;
+  padding: 18px;
+  background: var(--card);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: var(--radius);
+  position: relative;
+  overflow: hidden;
+  min-height: 170px;
+}
+.card::after{
+  content:"";
+  position:absolute;
+  inset:-2px;
+  background: radial-gradient(450px 120px at 20% 0%, rgba(124,92,255,0.18), transparent 60%),
+              radial-gradient(420px 120px at 90% 10%, rgba(40,215,255,0.15), transparent 55%);
+  opacity: 0;
+  transition: opacity .4s ease;
+  pointer-events: none;
+}
+.card:hover::after{ opacity: 1; }
+.card h2{
+  margin: 0 0 8px;
+  font-size: 1.1rem;
+}
+.card p{
+  margin: 0 0 14px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.meter{
+  height: 10px;
+  background: rgba(255,255,255,0.07);
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.08);
+  overflow: hidden;
+}
+.meter span{
+  display: block;
+  height: 100%;
+  width: var(--w, 60%);
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  border-radius: 999px;
+}
 
     /* ---------- Skills ---------- */
 
