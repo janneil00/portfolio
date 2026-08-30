@@ -121,7 +121,7 @@
 </style>
 </head>
 <body>
-
+ 
 <div class="cabinet">
   <div class="title">◢◤ ARCADE UNIT — <b>PYTHON&nbsp;PROTOCOL</b> ◢◤</div>
   <div class="hud">
@@ -142,26 +142,14 @@
     <kbd>&larr;</kbd> <kbd>&uarr;</kbd> <kbd>&darr;</kbd> <kbd>&rarr;</kbd> or <kbd>WASD</kbd> — steer &nbsp;•&nbsp; <kbd>SPACE</kbd> — pause
   </div>
 </div>
+ 
+<!--
+  NOTE: lose-sound.wav must sit next to this HTML file if you want the
+  original clip. If it's missing, playLoseSound() below falls back to a
+  synthesized "game over" tone via Web Audio, so it never throws.
+-->
 <audio id="loseSound" src="lose-sound.wav" preload="auto"></audio>
-  <script>
-        const loseSound = document.getElementById("loseSound");
-
-        function playLoseSound() {
-            try {
-                loseSound.currentTime = 0;
-                loseSound.play().catch(err => {
-                    console.error("Audio playback failed:", err);
-                });
-            } catch (error) {
-                console.error("Error playing lose sound:", error);
-            }
-        }
-
-        document.getElementById("loseBtn").addEventListener("click", () => {
-            console.log("You lost the game!");
-            playLoseSound();
-        });
-    </script>
+ 
 <script>
 (function(){
   const canvas = document.getElementById('game');
@@ -170,20 +158,57 @@
   const CELLS = 20;
   canvas.width = GRID * CELLS;
   canvas.height = GRID * CELLS;
-
+ 
   const scoreEl = document.getElementById('score');
   const bestEl = document.getElementById('best');
   const overlay = document.getElementById('overlay');
   const overlayTitle = document.getElementById('overlayTitle');
   const overlaySub = document.getElementById('overlaySub');
-
+  const loseSound = document.getElementById('loseSound');
+ 
+  // Fallback synthesized "lose" beep in case lose-sound.wav isn't present.
+  function playFallbackBeep(){
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      const actx = new AudioCtx();
+      const osc = actx.createOscillator();
+      const gain = actx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(220, actx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(60, actx.currentTime + 0.4);
+      gain.gain.setValueAtTime(0.15, actx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + 0.45);
+      osc.connect(gain).connect(actx.destination);
+      osc.start();
+      osc.stop(actx.currentTime + 0.45);
+    } catch (err) {
+      console.error('Fallback beep failed:', err);
+    }
+  }
+ 
+  function playLoseSound(){
+    try {
+      loseSound.currentTime = 0;
+      const playPromise = loseSound.play();
+      if (playPromise && playPromise.catch){
+        playPromise.catch(() => {
+          // lose-sound.wav missing or blocked — use fallback beep instead
+          playFallbackBeep();
+        });
+      }
+    } catch (error) {
+      console.error('Error playing lose sound:', error);
+      playFallbackBeep();
+    }
+  }
+ 
   let best = Number(localStorage.getItem('snake_best_amber') || 0);
   bestEl.textContent = pad(best);
-
+ 
   let snake, dir, nextDir, food, score, alive, running, tickMs, timer, paused;
-
+ 
   function pad(n){ return String(n).padStart(3,'0'); }
-
+ 
   function reset(){
     snake = [{x:9,y:10},{x:8,y:10},{x:7,y:10}];
     dir = {x:1,y:0};
@@ -196,7 +221,7 @@
     scoreEl.textContent = pad(score);
     draw();
   }
-
+ 
   function placeFood(){
     let ok = false;
     while(!ok){
@@ -204,14 +229,14 @@
       ok = !snake.some(s => s.x===food.x && s.y===food.y);
     }
   }
-
+ 
   function start(){
     if (running) return;
     running = true;
     overlay.classList.add('hidden');
     loop();
   }
-
+ 
   function loop(){
     clearTimeout(timer);
     if (!alive || paused) return;
@@ -221,18 +246,18 @@
       loop();
     }, tickMs);
   }
-
+ 
   function step(){
     dir = nextDir;
     const head = { x: snake[0].x + dir.x, y: snake[0].y + dir.y };
-
+ 
     if (head.x < 0 || head.x >= CELLS || head.y < 0 || head.y >= CELLS || snake.some(s => s.x===head.x && s.y===head.y)){
       die();
       return;
     }
-
+ 
     snake.unshift(head);
-
+ 
     if (head.x === food.x && head.y === food.y){
       score++;
       scoreEl.textContent = pad(score);
@@ -242,10 +267,11 @@
       snake.pop();
     }
   }
-
+ 
   function die(){
     alive = false;
     running = false;
+    playLoseSound();
     if (score > best){
       best = score;
       localStorage.setItem('snake_best_amber', best);
@@ -259,11 +285,11 @@
     document.querySelector('.hint').textContent = 'PRESS ANY ARROW / PINDUTIN MO WASD PARA MAG RESTART';
     overlay.classList.remove('hidden');
   }
-
+ 
   function draw(){
     ctx.fillStyle = '#0d0a06';
     ctx.fillRect(0,0,canvas.width,canvas.height);
-
+ 
     // faint grid
     ctx.strokeStyle = 'rgba(255,176,0,0.05)';
     ctx.lineWidth = 1;
@@ -271,7 +297,7 @@
       ctx.beginPath(); ctx.moveTo(i*GRID+0.5,0); ctx.lineTo(i*GRID+0.5,canvas.height); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(0,i*GRID+0.5); ctx.lineTo(canvas.width,i*GRID+0.5); ctx.stroke();
     }
-
+ 
     // food — pulsing node
     const pulse = 2 + Math.sin(Date.now()/180)*1.2;
     ctx.fillStyle = '#ffd670';
@@ -281,7 +307,7 @@
     ctx.arc(food.x*GRID+GRID/2, food.y*GRID+GRID/2, GRID/2 - 3 + pulse*0.3, 0, Math.PI*2);
     ctx.fill();
     ctx.shadowBlur = 0;
-
+ 
     // snake
     snake.forEach((s,i)=>{
       const t = i / snake.length;
@@ -294,12 +320,12 @@
     });
     ctx.shadowBlur = 0;
   }
-
+ 
   function setDir(x,y){
     if (dir.x === -x && dir.y === -y) return; // no reversing
     nextDir = {x,y};
   }
-
+ 
   function togglePause(){
     if (!alive) return;
     paused = !paused;
@@ -313,7 +339,7 @@
       loop();
     }
   }
-
+ 
   window.addEventListener('keydown', (e)=>{
     const k = e.key.toLowerCase();
     const map = {
@@ -339,10 +365,10 @@
       if (!running) start();
     }
   });
-
+ 
   reset();
 })();
 </script>
-
+ 
 </body>
 </html>
