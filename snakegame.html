@@ -231,13 +231,13 @@
       best = score;
       localStorage.setItem('snake_best_amber', best);
       bestEl.textContent = pad(best);
-      overlayTitle.textContent = 'NEW BEST — ' + pad(score);
-      overlaySub.textContent = 'The record has been rewritten.';
+      overlayTitle.textContent = 'MAY BAGO KANG HIGHEST SCORE — ' + pad(score);
+      overlaySub.textContent = 'Naka record na kabobohan mo.';
     } else {
-      overlayTitle.textContent = 'CONNECTION LOST';
+      overlayTitle.textContent = 'PATAY KANA BOBO';
       overlaySub.textContent = 'Signal terminated at ' + pad(score) + ' units.';
     }
-    document.querySelector('.hint').textContent = 'PRESS ANY ARROW / WASD TO RESTART';
+    document.querySelector('.hint').textContent = 'PRESS ANY ARROW / PINDUTIN MO WASD PARA MAG RESTART';
     overlay.classList.remove('hidden');
   }
 
