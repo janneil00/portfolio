@@ -142,7 +142,26 @@
     <kbd>&larr;</kbd> <kbd>&uarr;</kbd> <kbd>&darr;</kbd> <kbd>&rarr;</kbd> or <kbd>WASD</kbd> — steer &nbsp;•&nbsp; <kbd>SPACE</kbd> — pause
   </div>
 </div>
+<audio id="loseSound" src="lose-sound.wav" preload="auto"></audio>
+  <script>
+        const loseSound = document.getElementById("loseSound");
 
+        function playLoseSound() {
+            try {
+                loseSound.currentTime = 0;
+                loseSound.play().catch(err => {
+                    console.error("Audio playback failed:", err);
+                });
+            } catch (error) {
+                console.error("Error playing lose sound:", error);
+            }
+        }
+
+        document.getElementById("loseBtn").addEventListener("click", () => {
+            console.log("You lost the game!");
+            playLoseSound();
+        });
+    </script>
 <script>
 (function(){
   const canvas = document.getElementById('game');
