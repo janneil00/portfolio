@@ -1,3 +1,7 @@
+html'
+body{
+      scroll-behavior: smooth;
+}
 :root {
       --background: #090c13;
       --surface: #10151f;
