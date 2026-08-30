@@ -20,9 +20,9 @@
     --text-dim: #6f6a85;
     --text-bright: #f1eefc;
   }
-
+ 
   *{ box-sizing: border-box; }
-
+ 
   html, body{
     margin:0; padding:0;
     min-height:100%;
@@ -31,7 +31,7 @@
     font-family: 'Space Mono', monospace;
     overflow-x:hidden;
   }
-
+ 
   body{
     display:flex;
     align-items:center;
@@ -43,7 +43,7 @@
       radial-gradient(ellipse at 85% 100%, rgba(46,247,255,0.10), transparent 55%),
       var(--bg-void);
   }
-
+ 
   .scanlines{
     pointer-events:none;
     position:fixed; inset:0;
@@ -57,7 +57,7 @@
     mix-blend-mode: overlay;
     z-index: 50;
   }
-
+ 
   .stage{
     display:flex;
     gap: 28px;
@@ -66,8 +66,7 @@
     justify-content:center;
     max-width: 920px;
   }
-
-  /* ---------- Header / marquee ---------- */
+ 
   .marquee{
     width:100%;
     text-align:center;
@@ -90,8 +89,7 @@
     color: var(--text-dim);
     text-transform: uppercase;
   }
-
-  /* ---------- Well (playfield) ---------- */
+ 
   .well-wrap{
     position:relative;
     background: linear-gradient(180deg, #1a1626, var(--bg-panel));
@@ -103,14 +101,14 @@
       0 20px 60px rgba(0,0,0,0.6),
       0 0 40px rgba(139,92,246,0.08);
   }
-
+ 
   #board{
     display:block;
     background: var(--bg-well);
     border-radius: 6px;
     box-shadow: inset 0 0 0 1px #1c1826, inset 0 0 30px rgba(0,0,0,0.6);
   }
-
+ 
   .well-label{
     position:absolute;
     top: -11px;
@@ -122,15 +120,14 @@
     color: var(--cyan);
     letter-spacing: 1px;
   }
-
-  /* ---------- Side panel ---------- */
+ 
   .panel{
     display:flex;
     flex-direction:column;
     gap: 14px;
     width: 220px;
   }
-
+ 
   .card{
     background: linear-gradient(180deg, #17131f, var(--bg-panel));
     border: 1px solid #2a2438;
@@ -139,7 +136,7 @@
     position:relative;
   }
   .card .well-label{ left: 14px; }
-
+ 
   .card-title{
     font-family:'Press Start 2P', monospace;
     font-size: 9px;
@@ -147,7 +144,7 @@
     color: var(--text-dim);
     margin: 0 0 8px 0;
   }
-
+ 
   .stat-value{
     font-family:'Press Start 2P', monospace;
     font-size: 20px;
@@ -155,7 +152,7 @@
     text-shadow: 0 0 12px rgba(255,176,46,0.5);
   }
   .stat-value.small{ font-size: 16px; }
-
+ 
   #nextCanvas, #holdCanvas{
     display:block;
     margin: 0 auto;
@@ -163,7 +160,7 @@
     border-radius: 6px;
     box-shadow: inset 0 0 0 1px #1c1826;
   }
-
+ 
   .keys{
     font-size: 11px;
     line-height: 1.9;
@@ -174,12 +171,12 @@
     display:inline-block;
     width: 78px;
   }
-
+ 
   .btn-row{
     display:flex;
     gap: 10px;
   }
-
+ 
   button.action{
     flex:1;
     font-family:'Press Start 2P', monospace;
@@ -199,8 +196,7 @@
     box-shadow: 0 0 14px rgba(255,46,136,0.35);
   }
   button.action:active{ transform: translateY(1px); }
-
-  /* ---------- Overlay ---------- */
+ 
   .overlay{
     position:absolute; inset: 14px;
     background: rgba(8,7,12,0.88);
@@ -235,8 +231,7 @@
     min-width: 140px;
     flex: none;
   }
-
-  /* ---------- Touch controls ---------- */
+ 
   .touch{
     display:none;
     width:100%;
@@ -255,7 +250,7 @@
     border-radius: 8px;
   }
   .touch button:active{ background: #2a2338; }
-
+ 
   @media (max-width: 720px){
     .stage{ flex-direction:column; align-items:center; }
     .panel{ flex-direction:row; flex-wrap:wrap; width: 100%; max-width: 400px; }
@@ -265,15 +260,15 @@
 </style>
 </head>
 <body>
-
+ 
 <div class="scanlines"></div>
-
+ 
 <div class="stage">
   <div class="marquee">
     <h1>TETRIS NG TANGA</h1>
     <div class="sub">Tara na Mag tetris</div>
   </div>
-
+ 
   <div class="well-wrap">
     <span class="well-label">WELL</span>
     <canvas id="board"></canvas>
@@ -283,7 +278,7 @@
       <button class="action" id="overlayBtn">RESUME</button>
     </div>
   </div>
-
+ 
   <div class="panel">
     <div class="card">
       <span class="well-label">SCORE</span>
@@ -321,7 +316,7 @@
       <button class="action" id="pauseBtn">PAUSE</button>
     </div>
   </div>
-
+ 
   <div class="touch" id="touchControls">
     <button data-act="left">&larr;</button>
     <button data-act="rotate">&uarr;</button>
@@ -331,15 +326,22 @@
     <button data-act="drop">DROP</button>
   </div>
 </div>
-
+ 
+<!--
+  ginagawa-mo.mp3 must sit in the SAME FOLDER as this HTML file.
+  It now plays automatically when the game ends (triggerGameOver).
+  If it fails to load/play, a synthesized fallback tone plays instead.
+-->
+<audio id="loseSound" src="ginagawa-mo.mp3" preload="auto"></audio>
+ 
 <script>
 (function(){
   "use strict";
-
+ 
   // ---------- Config ----------
   const COLS = 10, ROWS = 20;
   let CELL = 28; // recalculated responsively
-
+ 
   const COLORS = {
     I: '#2ef7ff',
     O: '#ffb02e',
@@ -349,7 +351,7 @@
     J: '#4d7bff',
     L: '#ff8a2e'
   };
-
+ 
   const SHAPES = {
     I: [[0,1],[1,1],[2,1],[3,1]],
     O: [[1,0],[2,0],[1,1],[2,1]],
@@ -360,7 +362,44 @@
     L: [[2,0],[0,1],[1,1],[2,1]]
   };
   const PIECE_KEYS = Object.keys(SHAPES);
-
+ 
+  // ---------- Audio ----------
+  const loseSound = document.getElementById('loseSound');
+ 
+  function playFallbackBeep(){
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      const actx = new AudioCtx();
+      const osc = actx.createOscillator();
+      const gain = actx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(220, actx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(60, actx.currentTime + 0.4);
+      gain.gain.setValueAtTime(0.15, actx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + 0.45);
+      osc.connect(gain).connect(actx.destination);
+      osc.start();
+      osc.stop(actx.currentTime + 0.45);
+    } catch (err) {
+      console.error('Fallback beep failed:', err);
+    }
+  }
+ 
+  function playLoseSound(){
+    try {
+      loseSound.currentTime = 0;
+      const playPromise = loseSound.play();
+      if (playPromise && playPromise.catch){
+        playPromise.catch(() => {
+          playFallbackBeep();
+        });
+      }
+    } catch (error) {
+      console.error('Error playing lose sound:', error);
+      playFallbackBeep();
+    }
+  }
+ 
   // ---------- Canvas setup ----------
   const boardCanvas = document.getElementById('board');
   const ctx = boardCanvas.getContext('2d');
@@ -368,7 +407,7 @@
   const nextCtx = nextCanvas.getContext('2d');
   const holdCanvas = document.getElementById('holdCanvas');
   const holdCtx = holdCanvas.getContext('2d');
-
+ 
   function resizeBoard(){
     const maxW = Math.min(window.innerWidth - 40, 340);
     CELL = Math.floor(maxW / COLS);
@@ -377,7 +416,7 @@
     boardCanvas.height = CELL * ROWS;
     draw();
   }
-
+ 
   // ---------- State ----------
   let grid = createGrid();
   let current = null;
@@ -394,11 +433,11 @@
   let animFrame = null;
   let flashRows = [];
   let flashTimer = 0;
-
+ 
   function createGrid(){
     return Array.from({length: ROWS}, () => Array(COLS).fill(null));
   }
-
+ 
   function randomBag(){
     const bag = [...PIECE_KEYS];
     for(let i = bag.length - 1; i > 0; i--){
@@ -407,13 +446,13 @@
     }
     return bag;
   }
-
+ 
   function refillQueue(){
     if(nextQueue.length < 4){
       nextQueue.push(...randomBag());
     }
   }
-
+ 
   function spawnPiece(){
     refillQueue();
     const key = nextQueue.shift();
@@ -431,7 +470,7 @@
     }
     return piece;
   }
-
+ 
   function collides(piece, dx, dy, cellsOverride){
     const cells = cellsOverride || piece.cells;
     for(const c of cells){
@@ -442,7 +481,7 @@
     }
     return false;
   }
-
+ 
   function rotateCells(piece){
     if(piece.key === 'O') return piece.cells;
     // rotate around approximate center using simple matrix rotation
@@ -454,7 +493,7 @@
       return { x: Math.round(nx + cx), y: Math.round(ny + cy) };
     });
   }
-
+ 
   function tryRotate(piece){
     const rotated = rotateCells(piece);
     const kicks = [0, -1, 1, -2, 2];
@@ -467,7 +506,7 @@
     }
     return false;
   }
-
+ 
   function lockPiece(piece){
     for(const c of piece.cells){
       const x = piece.x + c.x, y = piece.y + c.y;
@@ -477,17 +516,17 @@
     canHold = true;
     current = spawnPiece();
   }
-
+ 
   function clearLines(){
     const fullRows = [];
     for(let y = 0; y < ROWS; y++){
       if(grid[y].every(cell => cell)) fullRows.push(y);
     }
     if(fullRows.length === 0) return;
-
+ 
     flashRows = fullRows;
     flashTimer = 140;
-
+ 
     setTimeout(() => {
       const newGrid = grid.filter((_, y) => !fullRows.includes(y));
       while(newGrid.length < ROWS){
@@ -496,7 +535,7 @@
       grid = newGrid;
       flashRows = [];
     }, 140);
-
+ 
     const points = [0, 100, 300, 500, 800][fullRows.length] * level;
     score += points;
     lines += fullRows.length;
@@ -504,7 +543,7 @@
     dropInterval = Math.max(100, 800 - (level - 1) * 65);
     updateStats();
   }
-
+ 
   function hardDrop(){
     let dist = 0;
     while(!collides(current, 0, dist + 1)) dist++;
@@ -514,7 +553,7 @@
     updateStats();
     dropTimer = 0;
   }
-
+ 
   function softDrop(){
     if(!collides(current, 0, 1)){
       current.y++;
@@ -525,13 +564,13 @@
     }
     dropTimer = 0;
   }
-
+ 
   function move(dx){
     if(!collides(current, dx, 0)){
       current.x += dx;
     }
   }
-
+ 
   function doHold(){
     if(!canHold) return;
     canHold = false;
@@ -547,13 +586,13 @@
     }
     drawHold();
   }
-
+ 
   function ghostPosition(){
     let dist = 0;
     while(!collides(current, 0, dist + 1)) dist++;
     return dist;
   }
-
+ 
   // ---------- Drawing ----------
   function roundRect(c, x, y, w, h, r){
     c.beginPath();
@@ -564,7 +603,7 @@
     c.arcTo(x, y, x+w, y, r);
     c.closePath();
   }
-
+ 
   function drawCell(c, px, py, size, color, glow){
     c.save();
     if(glow){
@@ -580,7 +619,7 @@
     c.fill();
     c.restore();
   }
-
+ 
   function lighten(hex, pct){
     const num = parseInt(hex.slice(1), 16);
     let r = (num >> 16) + Math.round(255 * pct/100);
@@ -589,10 +628,10 @@
     r = Math.min(255, r); g = Math.min(255, g); b = Math.min(255, b);
     return `rgb(${r},${g},${b})`;
   }
-
+ 
   function draw(){
     ctx.clearRect(0, 0, boardCanvas.width, boardCanvas.height);
-
+ 
     // grid lines
     ctx.strokeStyle = 'rgba(255,255,255,0.035)';
     ctx.lineWidth = 1;
@@ -608,7 +647,7 @@
       ctx.lineTo(COLS*CELL, y*CELL);
       ctx.stroke();
     }
-
+ 
     // settled cells
     for(let y = 0; y < ROWS; y++){
       for(let x = 0; x < COLS; x++){
@@ -619,7 +658,7 @@
         }
       }
     }
-
+ 
     if(current && !gameOver){
       // ghost
       const dist = ghostPosition();
@@ -630,7 +669,7 @@
         if(y >= 0) drawCell(ctx, x*CELL, y*CELL, CELL, COLORS[current.key], false);
       }
       ctx.restore();
-
+ 
       // active piece
       for(const c of current.cells){
         const x = current.x + c.x, y = current.y + c.y;
@@ -638,7 +677,7 @@
       }
     }
   }
-
+ 
   function drawMiniPiece(c, canvas, key){
     c.clearRect(0, 0, canvas.width, canvas.height);
     if(!key) return;
@@ -654,26 +693,26 @@
       drawCell(c, offX + px*size, offY + py*size, size, COLORS[key], true);
     }
   }
-
+ 
   function drawNext(){
     drawMiniPiece(nextCtx, nextCanvas, nextQueue[0]);
   }
   function drawHold(){
     drawMiniPiece(holdCtx, holdCanvas, holdPiece);
   }
-
+ 
   function updateStats(){
     document.getElementById('score').textContent = score;
     document.getElementById('lines').textContent = lines;
     document.getElementById('level').textContent = level;
   }
-
+ 
   // ---------- Overlay ----------
   const overlay = document.getElementById('overlay');
   const overlayTitle = document.getElementById('overlayTitle');
   const overlayText = document.getElementById('overlayText');
   const overlayBtn = document.getElementById('overlayBtn');
-
+ 
   function showOverlay(title, text, btnLabel){
     overlayTitle.textContent = title;
     overlayText.textContent = text;
@@ -683,19 +722,20 @@
   function hideOverlay(){
     overlay.classList.remove('show');
   }
-
+ 
   function triggerGameOver(){
     gameOver = true;
     running = false;
+    playLoseSound();
     showOverlay('GAME OVER', `Final score: ${score}. Press restart to try again.`, 'RESTART');
   }
-
+ 
   // ---------- Game loop ----------
   function loop(timestamp){
     if(!lastTime) lastTime = timestamp;
     const delta = timestamp - lastTime;
     lastTime = timestamp;
-
+ 
     if(running && !paused && !gameOver){
       dropTimer += delta;
       if(dropTimer > dropInterval){
@@ -710,7 +750,7 @@
     }
     animFrame = requestAnimationFrame(loop);
   }
-
+ 
   // ---------- Controls ----------
   document.addEventListener('keydown', (e) => {
     if(!running || paused || gameOver){
@@ -728,7 +768,7 @@
       case 'KeyP': togglePause(); e.preventDefault(); break;
     }
   });
-
+ 
   function togglePause(){
     if(gameOver || !running) return;
     paused = !paused;
@@ -738,14 +778,14 @@
       hideOverlay();
     }
   }
-
+ 
   document.getElementById('startBtn').addEventListener('click', startGame);
   document.getElementById('pauseBtn').addEventListener('click', togglePause);
   overlayBtn.addEventListener('click', () => {
     if(gameOver) startGame();
     else togglePause();
   });
-
+ 
   function startGame(){
     grid = createGrid();
     nextQueue = [];
@@ -764,9 +804,9 @@
     hideOverlay();
     draw();
   }
-
+ 
   const origSpawn = spawnPiece;
-
+ 
   // wrap spawnPiece to update next preview after each spawn
   function spawnPieceWrapped(){
     const p = origSpawn();
@@ -775,7 +815,7 @@
   }
   // Replace references
   spawnPiece = spawnPieceWrapped;
-
+ 
   // ---------- Touch controls ----------
   document.getElementById('touchControls').addEventListener('click', (e) => {
     const btn = e.target.closest('button');
@@ -789,9 +829,9 @@
     else if(act === 'hold') doHold();
     draw();
   });
-
+ 
   window.addEventListener('resize', resizeBoard);
-
+ 
   // ---------- Init ----------
   resizeBoard();
   drawNext();
@@ -801,6 +841,6 @@
   animFrame = requestAnimationFrame(loop);
 })();
 </script>
-
+ 
 </body>
 </html>
