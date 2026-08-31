@@ -1,4 +1,3 @@
-    · JS
 const header = document.getElementById("site-header");
 const menuButton = document.getElementById("menu-button");
 const navLinks = document.getElementById("nav-links");
