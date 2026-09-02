@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Parts Label Generator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  :root{
+    --ink:#111;
+    --paper:#fff;
+    --line:#111;
+    --green:#1c6b3a;
+    --green-dim:#e7f2eb;
+    --navy:#1b3a5c;
+    --navy-dim:#eef3f8;
+    --muted:#6b6b66;
+    --panel:#f4f3ef;
+    --panel-border:#d8d6cc;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:'Segoe UI', Arial, sans-serif;
+    background:var(--panel);
+    color:var(--ink);
+    padding:24px 16px 60px;
+  }
+  .wrap{max-width:1180px;margin:0 auto;}
+  header{margin-bottom:22px;}
+  header h1{
+    font-size:22px;
+    font-weight:700;
+    margin:0 0 4px;
+    letter-spacing:.2px;
+  }
+  header p{
+    margin:0;
+    color:var(--muted);
+    font-size:14px;
+  }
+  .layout{
+    display:grid;
+    grid-template-columns:380px 1fr;
+    gap:22px;
+    align-items:start;
+  }
+  @media (max-width:880px){
+    .layout{grid-template-columns:1fr;}
+  }
+  .card{
+    background:var(--paper);
+    border:1px solid var(--panel-border);
+    border-radius:6px;
+    padding:18px 20px 22px;
+  }
+  .tabs{
+    display:flex;
+    gap:6px;
+    margin-bottom:16px;
+  }
+  .tab-btn{
+    flex:1;
+    padding:9px 8px;
+    border:1px solid var(--panel-border);
+    background:var(--panel);
+    border-radius:5px;
+    font-size:13px;
+    font-weight:600;
+    cursor:pointer;
+    color:var(--muted);
+  }
+  .tab-btn.active{
+    background:var(--navy);
+    border-color:var(--navy);
+    color:#fff;
+  }
+  fieldset{
+    border:none;
+    padding:0;
+    margin:0 0 14px;
+  }
+  legend{
+    font-size:11px;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:.6px;
+    color:var(--muted);
+    margin-bottom:8px;
+  }
+  .field{margin-bottom:10px;}
+  .field label{
+    display:block;
+    font-size:12.5px;
+    font-weight:600;
+    margin-bottom:4px;
+    color:#333;
+  }
+  .field input[type=text], .field input[type=number]{
+    width:100%;
+    padding:8px 9px;
+    border:1px solid #c9c8c0;
+    border-radius:4px;
+    font-size:13.5px;
+    font-family:inherit;
+  }
+  .field input:focus{
+    outline:none;
+    border-color:var(--navy);
+    box-shadow:0 0 0 2px var(--navy-dim);
+  }
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+  .photo-slots{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+  .photo-slot{
+    border:1px dashed #c9c8c0;
+    border-radius:5px;
+    text-align:center;
+    padding:6px;
+    background:#fafaf7;
+    cursor:pointer;
+    position:relative;
+    min-height:64px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+  }
+  .photo-slot img{max-width:100%;max-height:56px;object-fit:contain;}
+  .photo-slot span{font-size:11px;color:var(--muted);}
+  .photo-slot input{position:absolute;inset:0;opacity:0;cursor:pointer;}
+  .actions{
+    display:flex;
+    gap:8px;
+    margin-top:16px;
+  }
+  button.primary{
+    flex:1;
+    padding:10px 12px;
+    background:var(--navy);
+    color:#fff;
+    border:none;
+    border-radius:5px;
+    font-size:13.5px;
+    font-weight:700;
+    cursor:pointer;
+  }
+  button.secondary{
+    padding:10px 12px;
+    background:#fff;
+    color:var(--navy);
+    border:1px solid var(--navy);
+    border-radius:5px;
+    font-size:13.5px;
+    font-weight:700;
+    cursor:pointer;
+  }
+  .preview-panel{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:16px;
+    padding-top:34px;
+  }
+  .label-stage{
+    background:repeating-conic-gradient(#e9e8e2 0% 25%, #f4f3ef 0% 50%) 50% / 16px 16px;
+    padding:26px;
+    border-radius:6px;
+    width:100%;
+    display:flex;
+    justify-content:center;
+  }
+  /* ---- kanban ticket label ---- */
+  .kanban-label{
+    background:#fff;
+    width:380px;
+    border:2px solid var(--ink);
+    display:grid;
+    grid-template-columns:118px 1fr;
+    font-family:'Consolas','Courier New',monospace;
+  }
+  .kanban-left{
+    border-right:2px solid var(--ink);
+    display:flex;
+    flex-direction:column;
+  }
+  .kb-cell{
+    border-bottom:1px solid var(--ink);
+    padding:6px 7px;
+  }
+  .kb-cell:last-child{border-bottom:none;flex:1;}
+  .kb-label{font-size:8.5px;font-weight:700;letter-spacing:.4px;color:#333;margin-bottom:2px;}
+  .kb-value{font-size:13px;font-weight:700;line-height:1.1;word-break:break-all;}
+  .kanban-right{
+    display:flex;
+    flex-direction:column;
+  }
+  .kb-qr{
+    flex:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:8px;
+  }
+  .kb-footer{
+    border-top:1px solid var(--ink);
+    padding:5px 7px;
+    font-size:9px;
+    font-weight:700;
+    letter-spacing:.3px;
+  }
+  .kanban-footer-full{
+    grid-column:1 / -1;
+    border-top:1px solid var(--ink);
+    padding:5px 7px;
+    font-size:9px;
+    font-weight:700;
+    letter-spacing:.3px;
+  }
+  /* ---- parts tag label ---- */
+  .tag-label{
+    background:#fff;
+    width:420px;
+    border:3px solid var(--green);
+    font-family:Arial, sans-serif;
+  }
+  .tag-head{
+    text-align:center;
+    padding:5px 8px 3px;
+    border-bottom:2px solid var(--green);
+  }
+  .tag-head .cap{
+    font-size:9px;
+    font-weight:700;
+    letter-spacing:.6px;
+    color:var(--green);
+  }
+  .tag-head .val{
+    font-size:22px;
+    font-weight:700;
+    letter-spacing:.5px;
+  }
+  .tag-photos{
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    border-bottom:2px solid var(--green);
+  }
+  .tag-photo-col{
+    border-right:1px solid #cfe3d6;
+  }
+  .tag-photo-col:last-child{border-right:none;}
+  .tag-photo-cap{
+    text-align:center;
+    font-size:8.5px;
+    font-weight:700;
+    letter-spacing:.4px;
+    color:var(--green);
+    background:var(--green-dim);
+    padding:3px 0;
+  }
+  .tag-photo-box{
+    height:70px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:4px;
+  }
+  .tag-photo-box img{max-width:100%;max-height:100%;object-fit:contain;}
+  .tag-photo-box span{font-size:9px;color:#aaa;}
+  .tag-grid3{
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    border-bottom:1px solid #cfe3d6;
+  }
+  .tag-grid3 .tag-cell{
+    border-right:1px solid #cfe3d6;
+  }
+  .tag-grid3 .tag-cell:last-child{border-right:none;}
+  .tag-cell{padding:5px 8px;}
+  .tag-cell .cap{
+    font-size:8px;
+    font-weight:700;
+    letter-spacing:.3px;
+    color:var(--muted);
+    margin-bottom:2px;
+  }
+  .tag-cell .val{
+    font-size:14px;
+    font-weight:700;
+    word-break:break-word;
+  }
+  .hidden{display:none !important;}
+  @media print{
+    body *{visibility:hidden;}
+    #printArea, #printArea *{visibility:visible;}
+    #printArea{position:absolute;top:0;left:0;padding:0;background:#fff;}
+    .label-stage{background:none;padding:0;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Parts label generator</h1>
+    <p>Fill in the fields to build a printable kanban ticket or parts tag, same layout as the physical bin labels.</p>
+  </header>
+ 
+  <div class="layout">
+    <div class="card">
+      <div class="tabs">
+        <button class="tab-btn active" id="tabKanban" onclick="switchTab('kanban')">Kanban ticket</button>
+        <button class="tab-btn" id="tabTag" onclick="switchTab('tag')">Parts tag</button>
+      </div>
+ 
+      <div id="formKanban">
+        <fieldset>
+          <legend>Part identity</legend>
+          <div class="field">
+            <label for="k-partno">Part no.</label>
+            <input type="text" id="k-partno" value="7047-7856-30">
+          </div>
+          <div class="row2">
+            <div class="field">
+              <label for="k-qty">Qty</label>
+              <input type="text" id="k-qty" value="100 PC">
+            </div>
+            <div class="field">
+              <label for="k-seq">Seq</label>
+              <input type="text" id="k-seq" value="5/6">
+            </div>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>Footer text</legend>
+          <div class="field">
+            <label for="k-footer">Issuance line</label>
+            <input type="text" id="k-footer" value="SET SATELLITE ISSUANCE STATUS">
+          </div>
+        </fieldset>
+      </div>
+ 
+      <div id="formTag" class="hidden">
+        <fieldset>
+          <legend>Part identity</legend>
+          <div class="field">
+            <label for="t-partno">Part no.</label>
+            <input type="text" id="t-partno" value="7047-7856-3T">
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>Reference photos</legend>
+          <div class="photo-slots">
+            <div class="photo-slot" id="slotFront">
+              <span>Front view</span>
+              <input type="file" accept="image/*" onchange="loadPhoto(event,'front')">
+            </div>
+            <div class="photo-slot" id="slotTop">
+              <span>Top view</span>
+              <input type="file" accept="image/*" onchange="loadPhoto(event,'top')">
+            </div>
+            <div class="photo-slot" id="slotRear">
+              <span>Rear view</span>
+              <input type="file" accept="image/*" onchange="loadPhoto(event,'rear')">
+            </div>
+          </div>
+        </fieldset>
+        <fieldset>
+          <legend>Routing details</legend>
+          <div class="row3">
+            <div class="field">
+              <label for="t-station">Station</label>
+              <input type="text" id="t-station" value="DD.PARTS ATTACH.2">
+            </div>
+            <div class="field">
+              <label for="t-wasurenbo">Wasurenbo</label>
+              <input type="text" id="t-wasurenbo" value="19">
+            </div>
+            <div class="field">
+              <label for="t-carline">Car line</label>
+              <input type="text" id="t-carline" value="579W/585W/586W/587W">
+            </div>
+          </div>
+          <div class="row3">
+            <div class="field">
+              <label for="t-ministore">Mini-store location</label>
+              <input type="text" id="t-ministore" value="TM3C03D3">
+            </div>
+            <div class="field">
+              <label for="t-sequence">Sequence</label>
+              <input type="text" id="t-sequence" value="2/3">
+            </div>
+            <div class="field">
+              <label for="t-conveyor">Conveyor</label>
+              <input type="text" id="t-conveyor" value="T10">
+            </div>
+          </div>
+        </fieldset>
+      </div>
+ 
+      <div class="actions">
+        <button class="primary" onclick="window.print()">Print label</button>
+        <button class="secondary" onclick="resetForm()">Reset</button>
+      </div>
+    </div>
+ 
+    <div class="preview-panel">
+      <div class="label-stage">
+        <div id="printArea">
+          <div class="kanban-label" id="kanbanLabel">
+            <div class="kanban-left">
+              <div class="kb-cell">
+                <div class="kb-label">PART NO.</div>
+                <div class="kb-value" id="kv-partno">7047-7856-30</div>
+              </div>
+              <div class="kb-cell">
+                <div class="kb-label">QTY</div>
+                <div class="kb-value" id="kv-qty">100 PC</div>
+              </div>
+              <div class="kb-cell">
+                <div class="kb-label">SEQ</div>
+                <div class="kb-value" id="kv-seq">5/6</div>
+              </div>
+            </div>
+            <div class="kanban-right">
+              <div class="kb-qr" id="qrHolder"></div>
+            </div>
+            <div class="kanban-footer-full" id="kv-footer">SET SATELLITE ISSUANCE STATUS</div>
+          </div>
+ 
+          <div class="tag-label hidden" id="tagLabel">
+            <div class="tag-head">
+              <div class="cap">Part no.</div>
+              <div class="val" id="tv-partno">7047-7856-3T</div>
+            </div>
+            <div class="tag-photos">
+              <div class="tag-photo-col">
+                <div class="tag-photo-cap">Front view</div>
+                <div class="tag-photo-box" id="photoBoxFront"><span>—</span></div>
+              </div>
+              <div class="tag-photo-col">
+                <div class="tag-photo-cap">Top view</div>
+                <div class="tag-photo-box" id="photoBoxTop"><span>—</span></div>
+              </div>
+              <div class="tag-photo-col">
+                <div class="tag-photo-cap">Rear view</div>
+                <div class="tag-photo-box" id="photoBoxRear"><span>—</span></div>
+              </div>
+            </div>
+            <div class="tag-grid3">
+              <div class="tag-cell"><div class="cap">Station</div><div class="val" id="tv-station">DD.PARTS ATTACH.2</div></div>
+              <div class="tag-cell"><div class="cap">Wasurenbo</div><div class="val" id="tv-wasurenbo">19</div></div>
+              <div class="tag-cell"><div class="cap">Car line</div><div class="val" id="tv-carline">579W/585W/586W/587W</div></div>
+            </div>
+            <div class="tag-grid3">
+              <div class="tag-cell"><div class="cap">Mini-store location</div><div class="val" id="tv-ministore">TM3C03D3</div></div>
+              <div class="tag-cell"><div class="cap">Sequence</div><div class="val" id="tv-sequence">2/3</div></div>
+              <div class="tag-cell"><div class="cap">Conveyor</div><div class="val" id="tv-conveyor">T10</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+ 
+<script>
+let currentTab = 'kanban';
+let qr = null;
+const photos = { front:null, top:null, rear:null };
+ 
+function switchTab(tab){
+  currentTab = tab;
+  document.getElementById('tabKanban').classList.toggle('active', tab==='kanban');
+  document.getElementById('tabTag').classList.toggle('active', tab==='tag');
+  document.getElementById('formKanban').classList.toggle('hidden', tab!=='kanban');
+  document.getElementById('formTag').classList.toggle('hidden', tab!=='tag');
+  document.getElementById('kanbanLabel').classList.toggle('hidden', tab!=='kanban');
+  document.getElementById('tagLabel').classList.toggle('hidden', tab!=='tag');
+}
+ 
+function renderQR(text){
+  const holder = document.getElementById('qrHolder');
+  holder.innerHTML = '';
+  qr = new QRCode(holder, { text: text || ' ', width: 92, height: 92, correctLevel: QRCode.CorrectLevel.M });
+}
+ 
+function bindKanban(){
+  const partno = document.getElementById('k-partno');
+  const qty = document.getElementById('k-qty');
+  const seq = document.getElementById('k-seq');
+  const footer = document.getElementById('k-footer');
+  function refresh(){
+    document.getElementById('kv-partno').textContent = partno.value || '—';
+    document.getElementById('kv-qty').textContent = qty.value || '—';
+    document.getElementById('kv-seq').textContent = seq.value || '—';
+    document.getElementById('kv-footer').textContent = footer.value || '';
+    renderQR(partno.value);
+  }
+  [partno, qty, seq, footer].forEach(el => el.addEventListener('input', refresh));
+  refresh();
+}
+ 
+function bindTag(){
+  const map = {
+    't-partno':'tv-partno', 't-station':'tv-station', 't-wasurenbo':'tv-wasurenbo',
+    't-carline':'tv-carline', 't-ministore':'tv-ministore', 't-sequence':'tv-sequence',
+    't-conveyor':'tv-conveyor'
+  };
+  function refresh(){
+    for (const [inputId, outId] of Object.entries(map)){
+      document.getElementById(outId).textContent = document.getElementById(inputId).value || '—';
+    }
+  }
+  Object.keys(map).forEach(id => document.getElementById(id).addEventListener('input', refresh));
+  refresh();
+}
+ 
+function loadPhoto(evt, which){
+  const file = evt.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    photos[which] = e.target.result;
+    const slot = document.getElementById('slot' + which.charAt(0).toUpperCase() + which.slice(1));
+    slot.innerHTML = '';
+    const img = document.createElement('img');
+    img.src = e.target.result;
+    slot.appendChild(img);
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = (ev) => loadPhoto(ev, which);
+    slot.appendChild(input);
+ 
+    const box = document.getElementById('photoBox' + which.charAt(0).toUpperCase() + which.slice(1));
+    box.innerHTML = '';
+    const previewImg = document.createElement('img');
+    previewImg.src = e.target.result;
+    box.appendChild(previewImg);
+  };
+  reader.readAsDataURL(file);
+}
+ 
+function resetForm(){
+  if (currentTab === 'kanban'){
+    document.getElementById('k-partno').value = '';
+    document.getElementById('k-qty').value = '';
+    document.getElementById('k-seq').value = '';
+    document.getElementById('k-footer').value = '';
+    document.getElementById('k-partno').dispatchEvent(new Event('input'));
+  } else {
+    ['t-partno','t-station','t-wasurenbo','t-carline','t-ministore','t-sequence','t-conveyor'].forEach(id=>{
+      document.getElementById(id).value = '';
+    });
+    document.getElementById('t-partno').dispatchEvent(new Event('input'));
+  }
+}
+ 
+bindKanban();
+bindTag();
+</script>
+</body>
+</html>
