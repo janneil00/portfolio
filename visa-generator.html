@@ -1,3 +1,5 @@
+
+Label generator · HTML
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -12,6 +14,8 @@
     --line:#111;
     --green:#1c6b3a;
     --green-dim:#e7f2eb;
+    --blue:#1355a6;
+    --blue-dim:#e8f0fb;
     --navy:#1b3a5c;
     --navy-dim:#eef3f8;
     --muted:#6b6b66;
@@ -174,18 +178,18 @@
   .kanban-label{
     background:#fff;
     width:380px;
-    border:2px solid var(--ink);
+    border:3px solid var(--blue);
     display:grid;
     grid-template-columns:118px 1fr;
     font-family:'Consolas','Courier New',monospace;
   }
   .kanban-left{
-    border-right:2px solid var(--ink);
+    border-right:2px solid var(--blue);
     display:flex;
     flex-direction:column;
   }
   .kb-cell{
-    border-bottom:1px solid var(--ink);
+    border-bottom:1px solid var(--blue);
     padding:6px 7px;
   }
   .kb-cell:last-child{border-bottom:none;flex:1;}
@@ -203,7 +207,7 @@
     padding:8px;
   }
   .kb-footer{
-    border-top:1px solid var(--ink);
+    border-top:1px solid var(--blue);
     padding:5px 7px;
     font-size:9px;
     font-weight:700;
@@ -211,7 +215,7 @@
   }
   .kanban-footer-full{
     grid-column:1 / -1;
-    border-top:1px solid var(--ink);
+    border-top:2px solid var(--blue);
     padding:5px 7px;
     font-size:9px;
     font-weight:700;
@@ -221,19 +225,19 @@
   .tag-label{
     background:#fff;
     width:420px;
-    border:3px solid var(--green);
+    border:3px solid var(--blue);
     font-family:Arial, sans-serif;
   }
   .tag-head{
     text-align:center;
     padding:5px 8px 3px;
-    border-bottom:2px solid var(--green);
+    border-bottom:2px solid var(--blue);
   }
   .tag-head .cap{
     font-size:9px;
     font-weight:700;
     letter-spacing:.6px;
-    color:var(--green);
+    color:var(--blue);
   }
   .tag-head .val{
     font-size:22px;
@@ -243,10 +247,10 @@
   .tag-photos{
     display:grid;
     grid-template-columns:1fr 1fr 1fr;
-    border-bottom:2px solid var(--green);
+    border-bottom:2px solid var(--blue);
   }
   .tag-photo-col{
-    border-right:1px solid #cfe3d6;
+    border-right:1px solid #cfe0f0;
   }
   .tag-photo-col:last-child{border-right:none;}
   .tag-photo-cap{
@@ -254,8 +258,8 @@
     font-size:8.5px;
     font-weight:700;
     letter-spacing:.4px;
-    color:var(--green);
-    background:var(--green-dim);
+    color:var(--blue);
+    background:var(--blue-dim);
     padding:3px 0;
   }
   .tag-photo-box{
@@ -270,10 +274,10 @@
   .tag-grid3{
     display:grid;
     grid-template-columns:1fr 1fr 1fr;
-    border-bottom:1px solid #cfe3d6;
+    border-bottom:1px solid #cfe0f0;
   }
   .tag-grid3 .tag-cell{
-    border-right:1px solid #cfe3d6;
+    border-right:1px solid #cfe0f0;
   }
   .tag-grid3 .tag-cell:last-child{border-right:none;}
   .tag-cell{padding:5px 8px;}
@@ -290,10 +294,24 @@
     word-break:break-word;
   }
   .hidden{display:none !important;}
+  #printGrid{
+    display:none;
+    grid-template-columns:repeat(3,1fr);
+    gap:5mm;
+  }
+  #printGrid .grid-cell{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    transform:scale(.72);
+    transform-origin:center;
+  }
   @media print{
+    @page{size:A4; margin:8mm;}
     body *{visibility:hidden;}
-    #printArea, #printArea *{visibility:visible;}
+    #printArea, #printArea *, #printGrid, #printGrid *{visibility:visible;}
     #printArea{position:absolute;top:0;left:0;padding:0;background:#fff;}
+    #printGrid{position:absolute;top:0;left:0;width:100%;}
     .label-stage{background:none;padding:0;}
   }
 </style>
@@ -399,7 +417,10 @@
  
       <div class="actions">
         <button class="primary" onclick="window.print()">Print label</button>
-        <button class="secondary" onclick="resetForm()">Reset</button>
+        <button class="secondary" onclick="printNineUp()">Print 9 per page</button>
+      </div>
+      <div class="actions">
+        <button class="secondary" style="flex:1" onclick="resetForm()">Reset</button>
       </div>
     </div>
  
@@ -458,6 +479,7 @@
             </div>
           </div>
         </div>
+        <div id="printGrid"></div>
       </div>
     </div>
   </div>
@@ -556,27 +578,39 @@ function resetForm(){
   }
 }
  
+function printNineUp(){
+  const activeLabel = currentTab === 'kanban'
+    ? document.getElementById('kanbanLabel')
+    : document.getElementById('tagLabel');
+  const printArea = document.getElementById('printArea');
+  const printGrid = document.getElementById('printGrid');
+ 
+  printGrid.innerHTML = '';
+  for (let i = 0; i < 9; i++){
+    const cell = document.createElement('div');
+    cell.className = 'grid-cell';
+    const clone = activeLabel.cloneNode(true);
+    clone.classList.remove('hidden');
+    clone.removeAttribute('id');
+    cell.appendChild(clone);
+    printGrid.appendChild(cell);
+  }
+ 
+  printArea.style.display = 'none';
+  printGrid.style.display = 'grid';
+ 
+  function restore(){
+    printArea.style.display = '';
+    printGrid.style.display = 'none';
+    printGrid.innerHTML = '';
+    window.removeEventListener('afterprint', restore);
+  }
+  window.addEventListener('afterprint', restore);
+  window.print();
+}
+ 
 bindKanban();
 bindTag();
 </script>
-</body> 
-    <footer class="footer">
-      <span>
-        © <span style="grid-column:1 / -1; 
-  border-top:1px solid #111; 
-  padding:5px 7px; 
-  font-size:9px; 
-  font-weight:700; 
-  letter-spacing:.3px; 
-  font-family:'Consolas','Courier New',monospace; 
-  text-transform:uppercase; 
-  color:#111; 
-  white-space:nowrap; 
-  overflow:hidden; 
-  text-overflow:ellipsis;">
-  Jan Neil Veranga. Built with HTML, CSS,
-        and JavaScript.>
-      <a class="back-to-top" href="index.html">Back to main dashboard ↑</a>
-    </div>
-  </footer>
+</body>
 </html>
