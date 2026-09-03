@@ -314,14 +314,14 @@
     </div>
  
     <div class="field">
-      <label>Sequence</label>
+      <label>Sequence (select any combination)</label>
       <div class="seqbtns" id="seqbtns">
         <div class="seqbtn selected" data-seq="1/3">1/3</div>
         <div class="seqbtn" data-seq="2/3">2/3</div>
         <div class="seqbtn" data-seq="3/3">3/3</div>
-        <div class="seqbtn" data-seq="all">All</div>
+        <div class="seqbtn" id="seqAllBtn" data-seq="all">All</div>
       </div>
-      <p class="seqhint" id="seqhint" style="display:none;">"All" adds all three labels (1/3, 2/3, 3/3) at once from this one entry.</p>
+      <p class="seqhint">Select one or more — e.g. pick 1/3 and 2/3 to add both from this one entry.</p>
     </div>
  
     <div class="field">
@@ -409,14 +409,24 @@ document.querySelectorAll('.swatch').forEach(sw=>{
 });
  
 // ---- sequence selection ----
-document.querySelectorAll('.seqbtn').forEach(sb=>{
+document.querySelectorAll('.seqbtn:not(#seqAllBtn)').forEach(sb=>{
   sb.addEventListener('click', ()=>{
-    document.querySelectorAll('.seqbtn').forEach(s=>s.classList.remove('selected'));
-    sb.classList.add('selected');
-    selectedSeq = sb.dataset.seq;
-    document.getElementById('seqhint').style.display = (selectedSeq === 'all') ? 'block' : 'none';
+    sb.classList.toggle('selected');
+    // ensure at least one stays selected
+    const anySelected = document.querySelectorAll('.seqbtn:not(#seqAllBtn).selected').length > 0;
+    if(!anySelected){
+      sb.classList.add('selected');
+    }
+    document.getElementById('seqAllBtn').classList.remove('selected');
   });
 });
+document.getElementById('seqAllBtn').addEventListener('click', ()=>{
+  document.querySelectorAll('.seqbtn:not(#seqAllBtn)').forEach(sb=> sb.classList.add('selected'));
+  document.getElementById('seqAllBtn').classList.add('selected');
+});
+function getSelectedSeqs(){
+  return Array.from(document.querySelectorAll('.seqbtn:not(#seqAllBtn).selected')).map(sb=>sb.dataset.seq);
+}
  
 // ---- image thumbnail preview ----
 function applyFontSizes(){
@@ -476,6 +486,7 @@ document.getElementById('addBtn').addEventListener('click', async ()=>{
     readAsDataURL(document.getElementById('f_rear'))
   ]);
  
+  const selectedSeqs = getSelectedSeqs();
   const base = {
     partno,
     station: document.getElementById('f_station').value.trim(),
@@ -487,11 +498,7 @@ document.getElementById('addBtn').addEventListener('click', async ()=>{
     frontImg, topImg, rearImg
   };
  
-  if(selectedSeq === 'all'){
-    ['1/3','2/3','3/3'].forEach(seq=> labels.push({...base, seq}));
-  } else {
-    labels.push({...base, seq: selectedSeq});
-  }
+  selectedSeqs.forEach(seq=> labels.push({...base, seq}));
  
   render();
  
