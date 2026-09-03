@@ -202,6 +202,21 @@
     font-weight:bold;
     padding:2px;
   }
+  .card .val-station{
+    font-size:var(--station-size, 9pt);
+    font-weight:bold;
+    padding:2px;
+  }
+  .card .val-wasurenbo{
+    font-size:var(--wasurenbo-size, 9pt);
+    font-weight:bold;
+    padding:2px;
+  }
+  .card .val-carline{
+    font-size:var(--carline-size, 7pt);
+    font-weight:bold;
+    padding:2px;
+  }
   .card .imgcell{
     height:0.62in;
   }
@@ -326,7 +341,21 @@
           <input type="text" id="f_size_partno" value="14" style="width:100%;padding:6px 6px;border:1px solid #c3c7cf;border-radius:4px;font-size:12px;">
         </div>
         <div>
-          <label style="font-weight:normal;text-transform:none;font-size:10px;">Values</label>
+          <label style="font-weight:normal;text-transform:none;font-size:10px;">Station</label>
+          <input type="text" id="f_size_station" value="9" style="width:100%;padding:6px 6px;border:1px solid #c3c7cf;border-radius:4px;font-size:12px;">
+        </div>
+        <div>
+          <label style="font-weight:normal;text-transform:none;font-size:10px;">Wasurenbo</label>
+          <input type="text" id="f_size_wasurenbo" value="9" style="width:100%;padding:6px 6px;border:1px solid #c3c7cf;border-radius:4px;font-size:12px;">
+        </div>
+      </div>
+      <div class="row3" style="margin-top:8px;">
+        <div>
+          <label style="font-weight:normal;text-transform:none;font-size:10px;">Car line</label>
+          <input type="text" id="f_size_carline" value="7" style="width:100%;padding:6px 6px;border:1px solid #c3c7cf;border-radius:4px;font-size:12px;">
+        </div>
+        <div>
+          <label style="font-weight:normal;text-transform:none;font-size:10px;">Other values</label>
           <input type="text" id="f_size_val" value="9" style="width:100%;padding:6px 6px;border:1px solid #c3c7cf;border-radius:4px;font-size:12px;">
         </div>
         <div>
@@ -392,13 +421,19 @@ document.querySelectorAll('.seqbtn').forEach(sb=>{
 // ---- image thumbnail preview ----
 function applyFontSizes(){
   const partno = parseFloat(document.getElementById('f_size_partno').value) || 14;
+  const station = parseFloat(document.getElementById('f_size_station').value) || 9;
+  const wasurenbo = parseFloat(document.getElementById('f_size_wasurenbo').value) || 9;
+  const carline = parseFloat(document.getElementById('f_size_carline').value) || 7;
   const val = parseFloat(document.getElementById('f_size_val').value) || 9;
   const lbl = parseFloat(document.getElementById('f_size_lbl').value) || 5;
   document.documentElement.style.setProperty('--partno-size', partno + 'pt');
+  document.documentElement.style.setProperty('--station-size', station + 'pt');
+  document.documentElement.style.setProperty('--wasurenbo-size', wasurenbo + 'pt');
+  document.documentElement.style.setProperty('--carline-size', carline + 'pt');
   document.documentElement.style.setProperty('--val-size', val + 'pt');
   document.documentElement.style.setProperty('--lbl-size', lbl + 'pt');
 }
-['f_size_partno','f_size_val','f_size_lbl'].forEach(id=>{
+['f_size_partno','f_size_station','f_size_wasurenbo','f_size_carline','f_size_val','f_size_lbl'].forEach(id=>{
   document.getElementById(id).addEventListener('input', applyFontSizes);
 });
 applyFontSizes();
@@ -505,9 +540,9 @@ function cardHTML(l){
         <td class="lbl">STATION</td><td class="lbl">WASURENBO</td><td class="lbl">CAR LINE</td>
       </tr>
       <tr>
-        <td class="val">${escapeHTML(l.station)}</td>
-        <td class="val">${escapeHTML(l.wasurenbo)}</td>
-        <td class="val" style="font-size:calc(var(--val-size, 9pt) * 0.78);">${escapeHTML(l.carline)}</td>
+        <td class="val-station">${escapeHTML(l.station)}</td>
+        <td class="val-wasurenbo">${escapeHTML(l.wasurenbo)}</td>
+        <td class="val-carline">${escapeHTML(l.carline)}</td>
       </tr>
       <tr>
         <td class="lbl">MINI-STORE LOCATION</td><td class="lbl">SEQUENCE</td><td class="lbl">CONVEYOR</td>
