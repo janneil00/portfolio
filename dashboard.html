@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Holographic AI Dashboard</title>
+
+<style>
+*{
+    box-sizing:border-box;
+    font-family: "Segoe UI", sans-serif;
+}
+
+body{
+    margin:0;
+    height:100vh;
+    overflow:hidden;
+    background:
+    radial-gradient(circle at top,#1a0040,#020617 45%,#000);
+    color:white;
+}
+
+/* Neon background particles */
+
+body::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    background:
+    linear-gradient(
+        120deg,
+        transparent,
+        rgba(0,255,255,.15),
+        transparent
+    );
+    animation:scan 6s infinite;
+}
+
+@keyframes scan{
+    from{transform:translateX(-100%)}
+    to{transform:translateX(100%)}
+}
+
+
+/* Dashboard */
+
+.dashboard{
+
+    display:grid;
+    grid-template-columns:260px 1fr;
+    height:100vh;
+    padding:25px;
+    gap:25px;
+
+}
+
+
+/* Glass panels */
+
+.glass{
+
+    background:
+    linear-gradient(
+        135deg,
+        rgba(255,255,255,.12),
+        rgba(255,255,255,.03)
+    );
+
+    border:1px solid rgba(0,255,255,.35);
+
+    backdrop-filter:blur(20px);
+
+    box-shadow:
+    0 0 30px rgba(0,255,255,.2),
+    inset 0 0 30px rgba(255,0,255,.15);
+
+    border-radius:25px;
+
+}
+
+
+/* Sidebar */
+
+.sidebar{
+
+    padding:25px;
+
+}
+
+
+.logo{
+
+    font-size:28px;
+    font-weight:900;
+
+    background:
+    linear-gradient(
+    90deg,
+    cyan,
+    magenta
+    );
+
+    -webkit-background-clip:text;
+    color:transparent;
+
+}
+
+
+.menu div{
+
+    margin:25px 0;
+    padding:12px;
+
+    border-radius:12px;
+
+    cursor:pointer;
+
+    transition:.3s;
+
+}
+
+
+.menu div:hover{
+
+    background:rgba(0,255,255,.2);
+
+    box-shadow:
+    0 0 20px cyan;
+
+}
+
+
+/* Main */
+
+.main{
+
+    display:flex;
+    flex-direction:column;
+    gap:25px;
+
+}
+
+
+.header{
+
+    padding:25px;
+
+    display:flex;
+    justify-content:space-between;
+
+}
+
+
+.status{
+
+    color:#00ffff;
+
+    animation:pulse 2s infinite;
+
+}
+
+
+@keyframes pulse{
+
+50%{
+    text-shadow:
+    0 0 25px cyan;
+}
+
+}
+
+
+/* Cards */
+
+.cards{
+
+display:grid;
+
+grid-template-columns:
+repeat(3,1fr);
+
+gap:20px;
+
+}
+
+
+.card{
+
+padding:25px;
+
+position:relative;
+
+overflow:hidden;
+
+}
+
+
+.card::after{
+
+content:"";
+
+position:absolute;
+
+width:150px;
+height:150px;
+
+right:-50px;
+top:-50px;
+
+background:
+radial-gradient(
+cyan,
+transparent
+);
+
+filter:blur(30px);
+
+}
+
+
+.value{
+
+font-size:42px;
+
+font-weight:bold;
+
+color:#00ffff;
+
+}
+
+
+
+/* Chart */
+
+.chart-box{
+
+flex:1;
+
+padding:30px;
+
+}
+
+
+canvas{
+
+width:100%;
+height:300px;
+
+}
+
+
+/* Floating HUD */
+
+.hud{
+
+position:absolute;
+
+border:1px solid cyan;
+
+opacity:.5;
+
+}
+
+
+.h1{
+
+top:50px;
+right:80px;
+
+width:120px;
+height:120px;
+
+border-radius:50%;
+
+animation:spin 8s linear infinite;
+
+}
+
+
+@keyframes spin{
+
+to{
+transform:rotate(360deg);
+}
+
+}
+
+
+
+</style>
+
+</head>
+
+
+<body>
+
+
+<div class="hud h1"></div>
+
+
+<div class="dashboard">
+
+
+<aside class="sidebar glass">
+
+
+<div class="logo">
+NEON AI
+</div>
+
+
+<div class="menu">
+
+<div>◈ Overview</div>
+<div>◉ Analytics</div>
+<div>◌ Network</div>
+<div>△ Security</div>
+<div>⚡ AI Core</div>
+
+</div>
+
+
+</aside>
+
+
+
+
+<section class="main">
+
+
+<div class="header glass">
+
+<h1>
+Holographic Control Center
+</h1>
+
+
+<div class="status">
+● SYSTEM ONLINE
+</div>
+
+
+</div>
+
+
+
+
+<div class="cards">
+
+
+<div class="card glass">
+
+CPU CORE
+
+<div class="value">
+87%
+</div>
+
+</div>
+
+
+
+<div class="card glass">
+
+AI PROCESSES
+
+<div class="value">
+342
+</div>
+
+</div>
+
+
+
+<div class="card glass">
+
+NETWORK
+
+<div class="value">
+9.8TB
+</div>
+
+</div>
+
+
+</div>
+
+
+
+
+
+<div class="chart-box glass">
+
+
+<h2>
+Quantum Data Visualization
+</h2>
+
+
+<canvas id="chart"></canvas>
+
+
+</div>
+
+
+</section>
+
+
+</div>
+
+
+
+
+
+<script>
+
+
+const canvas=document.getElementById("chart");
+
+const ctx=canvas.getContext("2d");
+
+
+canvas.width=900;
+canvas.height=350;
+
+
+let t=0;
+
+
+function draw(){
+
+ctx.clearRect(
+0,
+0,
+canvas.width,
+canvas.height
+);
+
+
+ctx.beginPath();
+
+
+for(
+let x=0;
+x<canvas.width;
+x++
+){
+
+let y=
+170+
+Math.sin(
+x*.025+t
+)*80+
+Math.sin(
+x*.01+t
+)*40;
+
+
+ctx.lineTo(x,y);
+
+}
+
+
+ctx.strokeStyle="#00ffff";
+
+ctx.lineWidth=4;
+
+ctx.shadowBlur=25;
+
+ctx.shadowColor="#00ffff";
+
+ctx.stroke();
+
+
+
+ctx.beginPath();
+
+
+for(
+let x=0;
+x<canvas.width;
+x++
+){
+
+let y=
+180+
+Math.cos(
+x*.03+t
+)*60;
+
+
+ctx.lineTo(x,y);
+
+}
+
+
+ctx.strokeStyle="#ff00ff";
+
+ctx.shadowColor="#ff00ff";
+
+ctx.stroke();
+
+
+
+t+=0.03;
+
+
+requestAnimationFrame(draw);
+
+}
+
+
+draw();
+
+
+
+
+/* Interactive card glow */
+
+
+document.querySelectorAll(".card")
+.forEach(card=>{
+
+card.addEventListener(
+"mousemove",
+e=>{
+
+let r=
+card.getBoundingClientRect();
+
+let x=e.clientX-r.left;
+
+let y=e.clientY-r.top;
+
+
+card.style.transform=
+`
+perspective(600px)
+rotateX(${-(y-r.height/2)/20}deg)
+rotateY(${(x-r.width/2)/20}deg)
+`;
+
+});
+
+
+card.addEventListener(
+"mouseleave",
+()=>{
+
+card.style.transform="";
+
+});
+
+
+});
+
+
+
+</script>
+
+
+</body>
+</html>
