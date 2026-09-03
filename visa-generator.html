@@ -366,6 +366,7 @@
     </div>
  
     <button class="btn btn-primary" id="addBtn">Add label to sheet</button>
+    <button class="btn btn-clear" id="cancelEditBtn" style="display:none;">Cancel edit</button>
  
     <hr class="sep">
  
@@ -398,6 +399,54 @@ const COLORS = {
 let labels = [];
 let selectedColor = 'green';
 let selectedSeq = '1/3';
+let editingIndex = null;
+ 
+function setThumb(id, src){
+  const t = document.getElementById(id);
+  if(src){ t.src = src; t.classList.add('show'); }
+  else { t.src=''; t.classList.remove('show'); }
+}
+ 
+function resetForm(){
+  ['f_partno','f_station','f_wasurenbo','f_carline','f_ministore','f_conveyor'].forEach(id=>{
+    document.getElementById(id).value='';
+  });
+  ['f_front','f_top','f_rear'].forEach(id=> document.getElementById(id).value='');
+  ['thumb_front','thumb_top','thumb_rear'].forEach(id=> setThumb(id, null));
+}
+ 
+function startEdit(i){
+  const l = labels[i];
+  editingIndex = i;
+  document.getElementById('f_partno').value = l.partno;
+  document.getElementById('f_station').value = l.station;
+  document.getElementById('f_wasurenbo').value = l.wasurenbo;
+  document.getElementById('f_carline').value = l.carline;
+  document.getElementById('f_ministore').value = l.ministore;
+  document.getElementById('f_conveyor').value = l.conveyor;
+ 
+  document.querySelectorAll('.swatch').forEach(s=> s.classList.toggle('selected', s.dataset.color === l.color));
+  selectedColor = l.color;
+ 
+  document.querySelectorAll('.seqbtn:not(#seqAllBtn)').forEach(s=> s.classList.toggle('selected', s.dataset.seq === l.seq));
+  document.getElementById('seqAllBtn').classList.remove('selected');
+ 
+  setThumb('thumb_front', l.frontImg);
+  setThumb('thumb_top', l.topImg);
+  setThumb('thumb_rear', l.rearImg);
+ 
+  document.getElementById('addBtn').textContent = 'Update label';
+  document.getElementById('cancelEditBtn').style.display = 'block';
+  document.querySelector('.panel').scrollTo({top:0, behavior:'smooth'});
+}
+ 
+function cancelEdit(){
+  editingIndex = null;
+  resetForm();
+  document.getElementById('addBtn').textContent = 'Add label to sheet';
+  document.getElementById('cancelEditBtn').style.display = 'none';
+}
+document.getElementById('cancelEditBtn').addEventListener('click', cancelEdit);
  
 // ---- color swatch selection ----
 document.querySelectorAll('.swatch').forEach(sw=>{
@@ -494,22 +543,28 @@ document.getElementById('addBtn').addEventListener('click', async ()=>{
     carline: document.getElementById('f_carline').value.trim(),
     ministore: document.getElementById('f_ministore').value.trim(),
     conveyor: document.getElementById('f_conveyor').value.trim(),
-    color: selectedColor,
-    frontImg, topImg, rearImg
+    color: selectedColor
   };
  
-  selectedSeqs.forEach(seq=> labels.push({...base, seq}));
+  if(editingIndex !== null){
+    const existing = labels[editingIndex];
+    const seq = selectedSeqs[0] || existing.seq;
+    labels[editingIndex] = {
+      ...base,
+      seq,
+      frontImg: frontImg || existing.frontImg,
+      topImg: topImg || existing.topImg,
+      rearImg: rearImg || existing.rearImg
+    };
+    editingIndex = null;
+    document.getElementById('addBtn').textContent = 'Add label to sheet';
+    document.getElementById('cancelEditBtn').style.display = 'none';
+  } else {
+    selectedSeqs.forEach(seq=> labels.push({...base, seq, frontImg, topImg, rearImg}));
+  }
  
   render();
- 
-  // reset only the text fields, keep color/seq choice for convenience
-  ['f_partno','f_station','f_wasurenbo','f_carline','f_ministore','f_conveyor'].forEach(id=>{
-    document.getElementById(id).value='';
-  });
-  ['f_front','f_top','f_rear'].forEach(id=> document.getElementById(id).value='');
-  ['thumb_front','thumb_top','thumb_rear'].forEach(id=>{
-    const t=document.getElementById(id); t.classList.remove('show'); t.src='';
-  });
+  resetForm();
 });
  
 document.getElementById('clearBtn').addEventListener('click', ()=>{
@@ -578,12 +633,22 @@ function render(){
     listEl.innerHTML = labels.map((l,i)=>`
       <div class="item">
         <span>${escapeHTML(l.partno)} (${l.seq})</span>
-        <button class="del" data-i="${i}">Remove</button>
+        <span>
+          <button class="del" data-edit="${i}" style="color:#2b3350;margin-right:8px;">Edit</button>
+          <button class="del" data-i="${i}">Remove</button>
+        </span>
       </div>
     `).join('');
-    listEl.querySelectorAll('.del').forEach(btn=>{
+    listEl.querySelectorAll('.del[data-edit]').forEach(btn=>{
       btn.addEventListener('click', ()=>{
-        labels.splice(parseInt(btn.dataset.i),1);
+        startEdit(parseInt(btn.dataset.edit));
+      });
+    });
+    listEl.querySelectorAll('.del[data-i]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const idx = parseInt(btn.dataset.i);
+        if(editingIndex === idx) cancelEdit();
+        labels.splice(idx,1);
         render();
       });
     });
