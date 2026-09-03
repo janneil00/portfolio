@@ -182,7 +182,7 @@
     padding:1px 2px;
   }
   .card .lbl{
-    font-size:6.6px;
+    font-size:var(--lbl-size, 5pt);
     letter-spacing:.02em;
     color:#000;
     padding:1px 2px;
@@ -192,13 +192,13 @@
     border:1px solid #000;
   }
   .card .partno{
-    font-size:19px;
+    font-size:var(--partno-size, 14pt);
     font-weight:bold;
     padding:3px 2px 2px;
     letter-spacing:.01em;
   }
   .card .val{
-    font-size:12px;
+    font-size:var(--val-size, 9pt);
     font-weight:bold;
     padding:2px;
   }
@@ -318,6 +318,24 @@
       </div>
     </div>
  
+    <div class="field">
+      <label>Font size (pt)</label>
+      <div class="row3">
+        <div>
+          <label style="font-weight:normal;text-transform:none;font-size:10px;">Part No.</label>
+          <input type="text" id="f_size_partno" value="14" style="width:100%;padding:6px 6px;border:1px solid #c3c7cf;border-radius:4px;font-size:12px;">
+        </div>
+        <div>
+          <label style="font-weight:normal;text-transform:none;font-size:10px;">Values</label>
+          <input type="text" id="f_size_val" value="9" style="width:100%;padding:6px 6px;border:1px solid #c3c7cf;border-radius:4px;font-size:12px;">
+        </div>
+        <div>
+          <label style="font-weight:normal;text-transform:none;font-size:10px;">Headers</label>
+          <input type="text" id="f_size_lbl" value="5" style="width:100%;padding:6px 6px;border:1px solid #c3c7cf;border-radius:4px;font-size:12px;">
+        </div>
+      </div>
+    </div>
+ 
     <button class="btn btn-primary" id="addBtn">Add label to sheet</button>
  
     <hr class="sep">
@@ -372,6 +390,19 @@ document.querySelectorAll('.seqbtn').forEach(sb=>{
 });
  
 // ---- image thumbnail preview ----
+function applyFontSizes(){
+  const partno = parseFloat(document.getElementById('f_size_partno').value) || 14;
+  const val = parseFloat(document.getElementById('f_size_val').value) || 9;
+  const lbl = parseFloat(document.getElementById('f_size_lbl').value) || 5;
+  document.documentElement.style.setProperty('--partno-size', partno + 'pt');
+  document.documentElement.style.setProperty('--val-size', val + 'pt');
+  document.documentElement.style.setProperty('--lbl-size', lbl + 'pt');
+}
+['f_size_partno','f_size_val','f_size_lbl'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', applyFontSizes);
+});
+applyFontSizes();
+ 
 function wireImgInput(inputId, thumbId){
   const input = document.getElementById(inputId);
   const thumb = document.getElementById(thumbId);
@@ -476,7 +507,7 @@ function cardHTML(l){
       <tr>
         <td class="val">${escapeHTML(l.station)}</td>
         <td class="val">${escapeHTML(l.wasurenbo)}</td>
-        <td class="val" style="font-size:9px;">${escapeHTML(l.carline)}</td>
+        <td class="val" style="font-size:calc(var(--val-size, 9pt) * 0.78);">${escapeHTML(l.carline)}</td>
       </tr>
       <tr>
         <td class="lbl">MINI-STORE LOCATION</td><td class="lbl">SEQUENCE</td><td class="lbl">CONVEYOR</td>
