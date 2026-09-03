@@ -22,14 +22,14 @@
     --rust:#b5533c;
     --rust-bright:#d76a4e;
   }
- 
+
   *{ box-sizing:border-box; }
- 
+
   body{
     margin:0;
     min-height:100vh;
     display:flex;
-    align-items:center;
+    align-items:flex-start;
     justify-content:center;
     background:
       radial-gradient(circle at 50% 0%, #202329 0%, var(--steel-900) 60%);
@@ -37,12 +37,15 @@
     color:var(--paper);
     padding:32px 16px;
   }
- 
-  .rig{
+
+  .app{
     width:100%;
-    max-width:420px;
+    max-width:460px;
+    display:flex;
+    flex-direction:column;
+    gap:20px;
   }
- 
+
   .plate{
     background:var(--steel-800);
     border:1px solid var(--steel-600);
@@ -51,7 +54,7 @@
     position:relative;
     box-shadow: 0 30px 60px -20px rgba(0,0,0,0.6);
   }
- 
+
   .plate::before{
     content:"";
     position:absolute;
@@ -60,7 +63,7 @@
     border-radius:3px;
     pointer-events:none;
   }
- 
+
   .rivet{
     position:absolute;
     width:6px; height:6px;
@@ -72,27 +75,27 @@
   .rivet.tr{ top:14px; right:14px; }
   .rivet.bl{ bottom:14px; left:14px; }
   .rivet.br{ bottom:14px; right:14px; }
- 
+
   .header{
     display:flex;
     justify-content:space-between;
     align-items:baseline;
     margin-bottom:20px;
   }
- 
+
   .brandmark{
     font-size:15px;
     font-weight:700;
     letter-spacing:0.02em;
   }
-  .brandmark span {color: red;; }
- 
+  .brandmark span { color: red; }
+
   .idtag{
     font-family:'IBM Plex Mono', monospace;
     font-size:10px;
     color:var(--paper-dim);
   }
- 
+
   .aperture-frame{
     position:relative;
     width:100%;
@@ -102,7 +105,7 @@
     overflow:hidden;
     border:1px solid var(--steel-600);
   }
- 
+
   video, canvas.overlay{
     position:absolute;
     inset:0;
@@ -112,9 +115,9 @@
   }
   video{ transform:scaleX(-1); filter:grayscale(0.15) contrast(1.05); }
   canvas.overlay{ transform:scaleX(-1); pointer-events:none; }
- 
+
   .aperture-frame.idle video{ opacity:0.55; }
- 
+
   .placeholder-eye{
     position:absolute;
     inset:0;
@@ -131,7 +134,7 @@
     transition:opacity 0.4s ease;
   }
   .aperture-frame.live .placeholder-eye{ opacity:0; pointer-events:none; }
- 
+
   .reticle{
     position:absolute;
     inset:14%;
@@ -148,10 +151,10 @@
   .corner.c2{ top:0; right:0; border-left:none; border-bottom:none; }
   .corner.c3{ bottom:0; left:0; border-right:none; border-top:none; }
   .corner.c4{ bottom:0; right:0; border-left:none; border-top:none; }
- 
+
   .aperture-frame.face-found .reticle{ inset:8%; }
   .aperture-frame.face-found .corner{ border-color:var(--teal-bright); opacity:1; }
- 
+
   .aperture-frame.scanning .reticle .corner{
     animation: pulseCorner 1.1s ease-in-out infinite;
   }
@@ -159,7 +162,7 @@
     0%,100%{ opacity:0.55; }
     50%{ opacity:1; }
   }
- 
+
   .scanline{
     position:absolute;
     left:0; right:0;
@@ -176,7 +179,7 @@
     0%{ top:6%; }
     100%{ top:94%; }
   }
- 
+
   .verdict-flash{
     position:absolute;
     inset:0;
@@ -189,7 +192,7 @@
     transition:opacity 0.25s ease;
   }
   .verdict-flash.show{ opacity:1; pointer-events:auto; }
- 
+
   .ring{
     width:64px; height:64px;
     border-radius:50%;
@@ -213,7 +216,7 @@
     0%{ transform:scale(0.8); opacity:0.9; }
     100%{ transform:scale(1.6); opacity:0; }
   }
- 
+
   .verdict-flash svg{ width:26px; height:26px; }
   .verdict-flash path{
     fill:none;
@@ -227,8 +230,7 @@
   .verdict-flash.deny path{ stroke:var(--rust-bright); }
   .verdict-flash.show path{ animation: draw 0.4s ease-out 0.15s forwards; }
   @keyframes draw{ to{ stroke-dashoffset:0; } }
- 
-  .verdict-flash.deny .aperture-frame{ animation:none; }
+
   .aperture-frame.shake{ animation: shake 0.4s ease; }
   @keyframes shake{
     0%,100%{ transform:translateX(0); }
@@ -237,7 +239,7 @@
     60%{ transform:translateX(-4px); }
     80%{ transform:translateX(3px); }
   }
- 
+
   .ticker{
     margin-top:14px;
     font-family:'IBM Plex Mono', monospace;
@@ -258,14 +260,35 @@
   .ticker.ok .dot{ background:var(--teal-bright); animation:none; }
   .ticker.err .dot{ background:var(--rust-bright); animation:none; }
   @keyframes blink{ 0%,100%{ opacity:1; } 50%{ opacity:0.25; } }
- 
+
+  .name-field{ margin-top:16px; }
+  .name-field label{
+    display:block;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10px;
+    color:var(--paper-dim);
+    margin-bottom:6px;
+  }
+  .name-field input{
+    width:100%;
+    background:var(--steel-700);
+    border:1px solid var(--steel-500);
+    border-radius:4px;
+    padding:10px 12px;
+    color:var(--paper);
+    font-family:'Space Grotesk', sans-serif;
+    font-size:13px;
+  }
+  .name-field input:focus{ outline:none; border-color:var(--brass); }
+  .name-field input::placeholder{ color:var(--steel-500); }
+
   .controls{
     display:grid;
     grid-template-columns:1fr 1fr;
     gap:10px;
-    margin-top:18px;
+    margin-top:14px;
   }
- 
+
   button.plate-btn{
     font-family:'Space Grotesk', sans-serif;
     font-size:13px;
@@ -295,13 +318,15 @@
   button.plate-btn:hover:not(:disabled){ color:var(--steel-900); border-color:var(--brass); }
   button.plate-btn:active:not(:disabled){ transform:scale(0.97); }
   button.plate-btn:disabled{ opacity:0.4; cursor:not-allowed; }
- 
+
   button.plate-btn.primary{ border-color:var(--brass); }
   button.plate-btn.primary::before{ transform:translateY(0); background:var(--brass); }
   button.plate-btn.primary span{ color:var(--steel-900); }
   button.plate-btn.primary:hover:not(:disabled)::before{ background:var(--brass-bright); }
   button.plate-btn.primary:disabled::before{ transform:translateY(0); }
- 
+
+  button.plate-btn.ghost{ border-color:var(--steel-500); }
+
   .vault{
     margin-top:18px;
     max-height:0;
@@ -313,12 +338,12 @@
     max-height:400px;
     opacity:1;
   }
- 
+
   .vault-inner{
     border-top:1px solid var(--steel-600);
     padding-top:16px;
   }
- 
+
   .vault-row{
     display:flex;
     align-items:center;
@@ -330,7 +355,7 @@
   }
   .vault-row:last-child{ border-bottom:none; }
   .vault-row .label{ color:var(--paper); }
- 
+
   .toggle{
     width:34px; height:18px;
     border-radius:10px;
@@ -351,12 +376,12 @@
   }
   .toggle.on{ background:var(--teal); }
   .toggle.on::after{ transform:translateX(16px); background:var(--paper); }
- 
+
   .signout{
     margin-top:14px;
     width:100%;
   }
- 
+
   .footer-note{
     margin-top:16px;
     font-size:10.5px;
@@ -364,22 +389,64 @@
     line-height:1.5;
     font-family:'IBM Plex Mono', monospace;
   }
+
+  /* Dashboard card */
+  .dash-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    margin-bottom:16px;
+  }
+  .dash-title{ font-size:14px; font-weight:700; }
+  .dash-count{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:10px;
+    color:var(--paper-dim);
+  }
+  .log-table{
+    width:100%;
+    border-collapse:collapse;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11.5px;
+  }
+  .log-table th{
+    text-align:left;
+    color:var(--paper-dim);
+    font-weight:500;
+    padding:8px 6px;
+    border-bottom:1px solid var(--steel-600);
+  }
+  .log-table td{
+    padding:8px 6px;
+    border-bottom:1px solid var(--steel-700);
+    color:var(--paper);
+  }
+  .log-table tbody tr:last-child td{ border-bottom:none; }
+  .log-empty{
+    color:var(--paper-dim);
+    font-size:12px;
+    padding:18px 4px;
+    text-align:center;
+    font-family:'IBM Plex Mono', monospace;
+  }
+  .clear-btn{ margin-top:16px; width:100%; }
 </style>
 </head>
 <body>
- 
-<div class="rig">
+
+<div class="app">
+
   <div class="plate">
     <div class="rivet tl"></div>
     <div class="rivet tr"></div>
     <div class="rivet bl"></div>
     <div class="rivet br"></div>
- 
+
     <div class="header">
       <div class="brandmark">EDS MANUFACTURING <span>YAZAKI</span></div>
       <div class="idtag" id="clock">--:--:--</div>
     </div>
- 
+
     <div class="aperture-frame idle" id="apertureFrame">
       <video id="video" autoplay muted playsinline></video>
       <canvas class="overlay" id="overlay"></canvas>
@@ -399,12 +466,17 @@
         </div>
       </div>
     </div>
- 
+
     <div class="ticker" id="ticker">
       <div class="dot"></div>
       <span id="tickerText">system idle</span>
     </div>
- 
+
+    <div class="name-field">
+      <label for="nameInput">Full name (required to enroll)</label>
+      <input type="text" id="nameInput" placeholder="e.g. Maria Santos" autocomplete="off">
+    </div>
+
     <div class="controls">
       <button class="plate-btn" id="camBtn"><span>Activate camera</span></button>
       <button class="plate-btn" id="enrollBtn" disabled><span>Enroll face</span></button>
@@ -412,9 +484,13 @@
     <div class="controls" style="grid-template-columns:1fr; margin-top:10px;">
       <button class="plate-btn primary" id="verifyBtn" disabled><span>Verify identity</span></button>
     </div>
- 
+
     <div class="vault" id="vault">
       <div class="vault-inner">
+        <div class="vault-row">
+          <span class="label">Signed in as</span>
+          <span id="grantedName">--</span>
+        </div>
         <div class="vault-row">
           <span class="label">Access granted</span>
           <span id="grantedTime">--</span>
@@ -434,22 +510,48 @@
         <button class="plate-btn signout" id="signoutBtn"><span>End session</span></button>
       </div>
     </div>
- 
+
     <div class="footer-note">
-      Face data stays in this browser tab and is discarded on reload. Nothing is uploaded. For production use, pair this UI with a server-side auth flow.
+      Face signatures and the login dashboard are stored so this kiosk recognizes returning people. This data is shared across everyone who uses this page — not private per browser. For production use, pair this UI with a server-side auth flow.
     </div>
   </div>
+
+  <div class="plate">
+    <div class="rivet tl"></div>
+    <div class="rivet tr"></div>
+    <div class="rivet bl"></div>
+    <div class="rivet br"></div>
+
+    <div class="dash-header">
+      <div class="dash-title">Login dashboard</div>
+      <div class="dash-count" id="dashCount">0 entries</div>
+    </div>
+
+    <table class="log-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Date</th>
+          <th>Time</th>
+        </tr>
+      </thead>
+      <tbody id="logBody"></tbody>
+    </table>
+    <div class="log-empty" id="logEmpty">No logins recorded yet.</div>
+
+    <button class="plate-btn ghost clear-btn" id="clearBtn"><span>Clear log</span></button>
+  </div>
+
 </div>
- 
+
 <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
 <script>
 const MODEL_URL = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model";
- 
+
 const video = document.getElementById('video');
 const overlay = document.getElementById('overlay');
 const octx = overlay.getContext('2d');
 const apertureFrame = document.getElementById('apertureFrame');
-const placeholderText = document.getElementById('placeholderText');
 const ticker = document.getElementById('ticker');
 const tickerText = document.getElementById('tickerText');
 const camBtn = document.getElementById('camBtn');
@@ -458,34 +560,92 @@ const verifyBtn = document.getElementById('verifyBtn');
 const verdictFlash = document.getElementById('verdictFlash');
 const verdictPath = document.getElementById('verdictPath');
 const vault = document.getElementById('vault');
+const grantedName = document.getElementById('grantedName');
 const grantedTime = document.getElementById('grantedTime');
 const matchScore = document.getElementById('matchScore');
 const signoutBtn = document.getElementById('signoutBtn');
 const lockToggle = document.getElementById('lockToggle');
 const motionToggle = document.getElementById('motionToggle');
 const clock = document.getElementById('clock');
- 
+const nameInput = document.getElementById('nameInput');
+const logBody = document.getElementById('logBody');
+const logEmpty = document.getElementById('logEmpty');
+const dashCount = document.getElementById('dashCount');
+const clearBtn = document.getElementById('clearBtn');
+
 const CHECK_PATH = "M4 12.5 L9.5 18 L20 6";
 const CROSS_PATH = "M6 6 L18 18 M18 6 L6 18";
 const MATCH_THRESHOLD = 0.5;
- 
+const STORAGE_KEY = 'kiosk-data';
+
 let modelsReady = false;
-let detectLoopHandle = null;
-let enrolledDescriptor = null;
+let enrolledFaces = [];   // [{ name, descriptor: number[] }]
+let loginLog = [];        // [{ name, date, time }]
 let busy = false;
- 
+
 function setTicker(msg, state){
   tickerText.textContent = msg;
   ticker.className = 'ticker' + (state ? ' ' + state : '');
 }
- 
+
 function tickClock(){
   const now = new Date();
   clock.textContent = now.toTimeString().slice(0,8);
 }
 setInterval(tickClock, 1000);
 tickClock();
- 
+
+function escapeHtml(str){
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+function updateEnrollVerifyAvailability(){
+  const hasFace = !!window.__lastDescriptor;
+  const hasName = nameInput.value.trim().length > 0;
+  enrollBtn.disabled = !(hasFace && hasName);
+  verifyBtn.disabled = !(hasFace && enrolledFaces.length > 0);
+}
+nameInput.addEventListener('input', updateEnrollVerifyAvailability);
+
+function renderDashboard(){
+  dashCount.textContent = loginLog.length + (loginLog.length === 1 ? ' entry' : ' entries');
+  if(loginLog.length === 0){
+    logBody.innerHTML = '';
+    logEmpty.style.display = 'block';
+    return;
+  }
+  logEmpty.style.display = 'none';
+  logBody.innerHTML = loginLog.map(e =>
+    `<tr><td>${escapeHtml(e.name)}</td><td>${escapeHtml(e.date)}</td><td>${escapeHtml(e.time)}</td></tr>`
+  ).join('');
+}
+
+async function loadState(){
+  try{
+    const res = await window.storage.get(STORAGE_KEY, true);
+    if(res && res.value){
+      const parsed = JSON.parse(res.value);
+      enrolledFaces = parsed.enrolledFaces || [];
+      loginLog = parsed.loginLog || [];
+    }
+  }catch(err){
+    enrolledFaces = [];
+    loginLog = [];
+  }
+  renderDashboard();
+  updateEnrollVerifyAvailability();
+}
+
+async function saveState(){
+  try{
+    await window.storage.set(STORAGE_KEY, JSON.stringify({ enrolledFaces, loginLog }), true);
+  }catch(err){
+    setTicker('could not save to shared storage', 'err');
+  }
+}
+
 async function loadModels(){
   setTicker('loading detection models…', 'busy');
   await Promise.all([
@@ -496,7 +656,7 @@ async function loadModels(){
   modelsReady = true;
   setTicker('models loaded — camera on standby');
 }
- 
+
 async function startCamera(){
   camBtn.disabled = true;
   setTicker('requesting camera access…', 'busy');
@@ -510,14 +670,13 @@ async function startCamera(){
     apertureFrame.classList.add('live', 'scanning');
     if(!modelsReady) await loadModels();
     setTicker('scanning for face…', 'busy');
-    enrollBtn.disabled = false;
     runDetectionLoop();
   }catch(err){
     setTicker('camera access denied — check browser permissions', 'err');
     camBtn.disabled = false;
   }
 }
- 
+
 async function runDetectionLoop(){
   const opts = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 });
   async function tick(){
@@ -526,22 +685,19 @@ async function runDetectionLoop(){
     octx.clearRect(0,0,overlay.width, overlay.height);
     if(result){
       apertureFrame.classList.add('face-found');
-      if(enrolledDescriptor){
-        verifyBtn.disabled = false;
-      }
       window.__lastDescriptor = result.descriptor;
-      if(!busy) setTicker(enrolledDescriptor ? 'face detected — ready to verify' : 'face detected — ready to enroll');
+      if(!busy) setTicker(enrolledFaces.length ? 'face detected — ready to verify' : 'face detected — enter your name and enroll');
     } else {
       apertureFrame.classList.remove('face-found');
       window.__lastDescriptor = null;
-      verifyBtn.disabled = true;
       if(!busy) setTicker('scanning for face…', 'busy');
     }
-    detectLoopHandle = requestAnimationFrame(tick);
+    if(!busy) updateEnrollVerifyAvailability();
+    requestAnimationFrame(tick);
   }
   tick();
 }
- 
+
 function flashVerdict(success, label){
   return new Promise(resolve => {
     verdictPath.setAttribute('d', success ? CHECK_PATH : CROSS_PATH);
@@ -557,52 +713,77 @@ function flashVerdict(success, label){
     }, 1300);
   });
 }
- 
+
+function findBestMatch(descriptor){
+  let best = null, bestDist = Infinity;
+  for(const person of enrolledFaces){
+    const dist = faceapi.euclideanDistance(person.descriptor, descriptor);
+    if(dist < bestDist){ bestDist = dist; best = person; }
+  }
+  return { person: best, distance: bestDist };
+}
+
 enrollBtn.addEventListener('click', async () => {
-  if(!window.__lastDescriptor || busy) return;
+  const name = nameInput.value.trim();
+  if(!window.__lastDescriptor || !name || busy) return;
   busy = true;
   enrollBtn.disabled = true;
-  setTicker('capturing facial signature…', 'busy');
+  setTicker('capturing facial signature for ' + name + '…', 'busy');
   await new Promise(r => setTimeout(r, 500));
-  enrolledDescriptor = window.__lastDescriptor;
-  await flashVerdict(true, 'face enrolled — you can now verify');
+  enrolledFaces.push({ name, descriptor: Array.from(window.__lastDescriptor) });
+  await saveState();
+  await flashVerdict(true, name + ' enrolled — ready to verify');
   busy = false;
-  enrollBtn.disabled = false;
-  verifyBtn.disabled = !window.__lastDescriptor;
+  updateEnrollVerifyAvailability();
 });
- 
+
 verifyBtn.addEventListener('click', async () => {
-  if(!window.__lastDescriptor || !enrolledDescriptor || busy) return;
+  if(!window.__lastDescriptor || busy || enrolledFaces.length === 0) return;
   busy = true;
   verifyBtn.disabled = true;
-  setTicker('comparing against enrolled signature…', 'busy');
+  setTicker('comparing against enrolled signatures…', 'busy');
   await new Promise(r => setTimeout(r, 600));
-  const distance = faceapi.euclideanDistance(enrolledDescriptor, window.__lastDescriptor);
-  const success = distance < MATCH_THRESHOLD;
+  const { person, distance } = findBestMatch(window.__lastDescriptor);
+  const success = person && distance < MATCH_THRESHOLD;
   const confidence = Math.max(0, (1 - distance) * 100).toFixed(1);
   if(success){
-    await flashVerdict(true, 'identity confirmed — access granted');
-    grantedTime.textContent = new Date().toTimeString().slice(0,8);
+    await flashVerdict(true, person.name + ' — identity confirmed, access granted');
+    const now = new Date();
+    const entry = { name: person.name, date: now.toLocaleDateString(), time: now.toTimeString().slice(0,8) };
+    loginLog.unshift(entry);
+    await saveState();
+    renderDashboard();
+    grantedName.textContent = person.name;
+    grantedTime.textContent = entry.time;
     matchScore.textContent = confidence + '%';
     vault.classList.add('open');
   } else {
     await flashVerdict(false, 'no match — access denied (' + confidence + '% confidence)');
   }
   busy = false;
-  verifyBtn.disabled = !window.__lastDescriptor;
+  updateEnrollVerifyAvailability();
 });
- 
+
 signoutBtn.addEventListener('click', () => {
   vault.classList.remove('open');
   setTicker(window.__lastDescriptor ? 'face detected — ready to verify' : 'scanning for face…');
 });
- 
+
+clearBtn.addEventListener('click', async () => {
+  if(!confirm('Clear all login history? Enrolled faces will be kept.')) return;
+  loginLog = [];
+  await saveState();
+  renderDashboard();
+});
+
 [lockToggle, motionToggle].forEach(t => {
   t.addEventListener('click', () => t.classList.toggle('on'));
 });
- 
+
 camBtn.addEventListener('click', startCamera);
+
+loadState();
 </script>
- 
+
 </body>
 </html>
