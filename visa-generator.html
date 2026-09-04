@@ -659,10 +659,13 @@ const GUTTER = 1; // blank row/col between cards
 const GRID_TOTAL_COLS = CARDS_PER_ROW * (CARD_COLS + GUTTER) - GUTTER;
 const GRID_TOTAL_ROWS = CARDS_PER_COL * (CARD_ROWS + GUTTER) - GUTTER;
 
-// Row heights within one card, top to bottom (10 entries = CARD_ROWS).
-// The first/last entries (6) are the border frame rows — 6 points tall,
-// which is exactly the print CSS's border-width:6pt.
-const ROW_HEIGHTS = [6, 11, 22, 11, 58, 11, 16, 11, 16, 6];
+// Row heights within one card, top to bottom (10 slots = CARD_ROWS).
+// Only rows that don't hold resizable text get a locked height: the
+// border-frame rows (index 0/9, fixed at 6pt to match border-width:6pt)
+// and the image row (index 4, sized for the embedded photo, not text).
+// Text rows are left unlocked (see rowHeightAt) so Excel keeps auto-fitting
+// them if the user later changes a cell's font size.
+const LOCKED_ROW_HEIGHTS = {0:6, 4:58, 9:6};
 // Column widths within one card, left to right (5 entries = CARD_COLS).
 // The first/last entries approximate a 6pt-wide vertical rule; Excel column
 // widths aren't in points, so this is tuned to look right rather than an
@@ -675,13 +678,38 @@ function colWidthAt(withinBlock){
   return withinBlock === CARD_COLS ? GUTTER_COL_WIDTH : COL_WIDTHS[withinBlock];
 }
 function rowHeightAt(withinBlock){
-  return withinBlock === CARD_ROWS ? GUTTER_ROW_HEIGHT : ROW_HEIGHTS[withinBlock];
+  if(withinBlock === CARD_ROWS) return GUTTER_ROW_HEIGHT;
+  return (withinBlock in LOCKED_ROW_HEIGHTS) ? LOCKED_ROW_HEIGHTS[withinBlock] : null;
 }
 function argbFromHex(hex){ return 'FF' + hex.replace('#','').toUpperCase(); }
 
 function styleCell(cell, {size=9, bold=false, color='FF000000', italic=false}={}){
   cell.font = {size, bold, italic, color:{argb:color}};
   cell.alignment = {horizontal:'center', vertical:'middle', wrapText:true};
+}
+
+// Visually spans text across 3 columns WITHOUT merging them. True merged
+// cells never auto-fit their row height in Excel — even a font-size change
+// leaves the row locked at its old height and the text overflows/gets
+// clipped. "Center across selection" (centerContinuous alignment) gives the
+// same centered look while keeping each cell independent, so Excel keeps
+// auto-fitting the row normally when the user edits the font size.
+function centerAcross(ws, row, colStart, span, value, styleOpts){
+  const thin = {style:'thin', color:{argb:'FF000000'}};
+  for(let i=0; i<span; i++){
+    const cell = ws.getCell(row, colStart+i);
+    if(i===0) cell.value = value;
+    cell.font = {size:styleOpts.size, bold:!!styleOpts.bold, italic:!!styleOpts.italic, color:{argb:styleOpts.color||'FF000000'}};
+    cell.alignment = {horizontal:'centerContinuous', vertical:'middle', wrapText:true};
+    // Draw as one continuous box: top+bottom on every cell, but only the
+    // outer left/right edges — no internal dividers between the 3 cells.
+    cell.border = {
+      top: thin,
+      bottom: thin,
+      left: i===0 ? thin : undefined,
+      right: i===span-1 ? thin : undefined
+    };
+  }
 }
 
 // Fills the outer ring of the card (the border frame cells) solid with the
@@ -700,10 +728,11 @@ function fillBorderFrame(ws, rowStart, colStart, colorHex){
 }
 
 // Thin black grid lines between the content cells, matching the printed
-// table's 1px cell borders.
+// table's 1px cell borders. Skips the PART NO. header/value rows (offsets
+// 0/1) since those are drawn as continuous boxes by centerAcross() instead.
 function applyContentGrid(ws, contentRowStart, contentColStart){
   const thin = {style:'thin', color:{argb:'FF000000'}};
-  for(let r=0; r<CONTENT_ROWS; r++){
+  for(let r=2; r<CONTENT_ROWS; r++){
     for(let c=0; c<CONTENT_COLS; c++){
       ws.getCell(contentRowStart+r, contentColStart+c).border = {top:thin, bottom:thin, left:thin, right:thin};
     }
@@ -716,14 +745,8 @@ async function fillCard(workbook, ws, l, rowStart, colStart){
   const cr = rowStart + BORDER_ROWS; // content row start
   const cc = colStart + BORDER_COLS; // content col start
 
-  ws.mergeCells(cr, cc, cr, cc+2);
-  styleCell(ws.getCell(cr, cc), {size:6, color:'FF555555'});
-  ws.getCell(cr, cc).value = 'PART NO.';
-
-  ws.mergeCells(cr+1, cc, cr+1, cc+2);
-  const partnoCell = ws.getCell(cr+1, cc);
-  partnoCell.value = l.partno;
-  styleCell(partnoCell, {size:14, bold:true});
+  centerAcross(ws, cr, cc, 3, 'PART NO.', {size:6, color:'FF555555'});
+  centerAcross(ws, cr+1, cc, 3, l.partno, {size:14, bold:true});
 
   ['FRONT VIEW','TOP VIEW','REAR VIEW'].forEach((h,i)=>{
     const c = ws.getCell(cr+2, cc+i);
@@ -787,7 +810,8 @@ async function buildVisualPages(workbook){
     ws.columns = cols;
     for(let r0=0; r0<GRID_TOTAL_ROWS; r0++){
       const row = ws.getRow(r0+1);
-      row.height = rowHeightAt(r0 % (CARD_ROWS+GUTTER));
+      const h = rowHeightAt(r0 % (CARD_ROWS+GUTTER));
+      if(h !== null) row.height = h; // leave unset otherwise so Excel auto-fits the row
     }
     for(let idx=0; idx<chunk.length; idx++){
       const cardRowIdx = Math.floor(idx / CARDS_PER_ROW);
