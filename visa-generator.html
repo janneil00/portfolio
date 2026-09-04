@@ -647,24 +647,40 @@ async function imageForEmbed(dataUrl){
 }
 
 // ---- card grid geometry (mirrors the 3x3-per-page print layout) ----
-const CARD_ROWS = 8;      // rows used by one label card
-const CARD_COLS = 3;      // columns used by one label card
+const CONTENT_ROWS = 8;   // rows used by one label card's content
+const CONTENT_COLS = 3;   // columns used by one label card's content
+const BORDER_ROWS = 1;    // top/bottom frame rows (each sized to ~6pt, matching the printed border-width:6pt)
+const BORDER_COLS = 1;    // left/right frame columns (each sized to ~6pt)
+const CARD_ROWS = CONTENT_ROWS + BORDER_ROWS*2;  // 10, incl. top+bottom border frame
+const CARD_COLS = CONTENT_COLS + BORDER_COLS*2;  // 5, incl. left+right border frame
 const CARDS_PER_ROW = 3;
 const CARDS_PER_COL = 3;
-const GRID_TOTAL_COLS = CARDS_PER_ROW * (CARD_COLS + 1) - 1; // + gutter cols, no trailing gutter
-const GRID_TOTAL_ROWS = CARDS_PER_COL * (CARD_ROWS + 1) - 1; // + gutter rows, no trailing gutter
-const ROW_PATTERN = [
-  {height:11}, // 0 "PART NO." header
-  {height:22}, // 1 part number value
-  {height:11}, // 2 FRONT/TOP/REAR headers
-  {height:58}, // 3 images
-  {height:11}, // 4 STATION/WASURENBO/CAR LINE headers
-  {height:16}, // 5 values
-  {height:11}, // 6 MINI-STORE/SEQUENCE/CONVEYOR headers
-  {height:16}  // 7 values
-];
-function colIsGutter(c0){ return (c0 % (CARD_COLS + 1)) === CARD_COLS; }
-function rowIsGutter(r0){ return (r0 % (CARD_ROWS + 1)) === CARD_ROWS; }
+const GUTTER = 1; // blank row/col between cards
+const GRID_TOTAL_COLS = CARDS_PER_ROW * (CARD_COLS + GUTTER) - GUTTER;
+const GRID_TOTAL_ROWS = CARDS_PER_COL * (CARD_ROWS + GUTTER) - GUTTER;
+
+// Row heights within one card, top to bottom (10 slots = CARD_ROWS).
+// Only rows that don't hold resizable text get a locked height: the
+// border-frame rows (index 0/9, fixed at 6pt to match border-width:6pt)
+// and the image row (index 4, sized for the embedded photo, not text).
+// Text rows are left unlocked (see rowHeightAt) so Excel keeps auto-fitting
+// them if the user later changes a cell's font size.
+const LOCKED_ROW_HEIGHTS = {0:6, 4:58, 9:6};
+// Column widths within one card, left to right (5 entries = CARD_COLS).
+// The first/last entries approximate a 6pt-wide vertical rule; Excel column
+// widths aren't in points, so this is tuned to look right rather than an
+// exact unit conversion.
+const COL_WIDTHS = [1.1, 15, 15, 15, 1.1];
+const GUTTER_ROW_HEIGHT = 6;
+const GUTTER_COL_WIDTH = 3;
+
+function colWidthAt(withinBlock){
+  return withinBlock === CARD_COLS ? GUTTER_COL_WIDTH : COL_WIDTHS[withinBlock];
+}
+function rowHeightAt(withinBlock){
+  if(withinBlock === CARD_ROWS) return GUTTER_ROW_HEIGHT;
+  return (withinBlock in LOCKED_ROW_HEIGHTS) ? LOCKED_ROW_HEIGHTS[withinBlock] : null;
+}
 function argbFromHex(hex){ return 'FF' + hex.replace('#','').toUpperCase(); }
 
 function styleCell(cell, {size=9, bold=false, color='FF000000', italic=false}={}){
@@ -672,34 +688,68 @@ function styleCell(cell, {size=9, bold=false, color='FF000000', italic=false}={}
   cell.alignment = {horizontal:'center', vertical:'middle', wrapText:true};
 }
 
-function applyCardBorder(ws, rowStart, colStart, colorHex){
-  const thick = {style:'thick', color:{argb:argbFromHex(colorHex)}};
+// Visually spans text across 3 columns WITHOUT merging them. True merged
+// cells never auto-fit their row height in Excel — even a font-size change
+// leaves the row locked at its old height and the text overflows/gets
+// clipped. "Center across selection" (centerContinuous alignment) gives the
+// same centered look while keeping each cell independent, so Excel keeps
+// auto-fitting the row normally when the user edits the font size.
+function centerAcross(ws, row, colStart, span, value, styleOpts){
   const thin = {style:'thin', color:{argb:'FF000000'}};
+  for(let i=0; i<span; i++){
+    const cell = ws.getCell(row, colStart+i);
+    if(i===0) cell.value = value;
+    cell.font = {size:styleOpts.size, bold:!!styleOpts.bold, italic:!!styleOpts.italic, color:{argb:styleOpts.color||'FF000000'}};
+    cell.alignment = {horizontal:'centerContinuous', vertical:'middle', wrapText:true};
+    // Draw as one continuous box: top+bottom on every cell, but only the
+    // outer left/right edges — no internal dividers between the 3 cells.
+    cell.border = {
+      top: thin,
+      bottom: thin,
+      left: i===0 ? thin : undefined,
+      right: i===span-1 ? thin : undefined
+    };
+  }
+}
+
+// Fills the outer ring of the card (the border frame cells) solid with the
+// label's chosen color — a real colored block, so its thickness is set by
+// the frame row height / column width (6pt) rather than by a border-style enum.
+function fillBorderFrame(ws, rowStart, colStart, colorHex){
+  const argb = argbFromHex(colorHex);
   for(let r=0; r<CARD_ROWS; r++){
     for(let c=0; c<CARD_COLS; c++){
-      const cell = ws.getCell(rowStart+r, colStart+c);
-      cell.border = {
-        top: r===0 ? thick : thin,
-        bottom: r===CARD_ROWS-1 ? thick : thin,
-        left: c===0 ? thick : thin,
-        right: c===CARD_COLS-1 ? thick : thin
-      };
+      const isFrame = r===0 || r===CARD_ROWS-1 || c===0 || c===CARD_COLS-1;
+      if(isFrame){
+        ws.getCell(rowStart+r, colStart+c).fill = {type:'pattern', pattern:'solid', fgColor:{argb}};
+      }
+    }
+  }
+}
+
+// Thin black grid lines between the content cells, matching the printed
+// table's 1px cell borders. Skips the PART NO. header/value rows (offsets
+// 0/1) since those are drawn as continuous boxes by centerAcross() instead.
+function applyContentGrid(ws, contentRowStart, contentColStart){
+  const thin = {style:'thin', color:{argb:'FF000000'}};
+  for(let r=2; r<CONTENT_ROWS; r++){
+    for(let c=0; c<CONTENT_COLS; c++){
+      ws.getCell(contentRowStart+r, contentColStart+c).border = {top:thin, bottom:thin, left:thin, right:thin};
     }
   }
 }
 
 async function fillCard(workbook, ws, l, rowStart, colStart){
-  ws.mergeCells(rowStart, colStart, rowStart, colStart+2);
-  styleCell(ws.getCell(rowStart, colStart), {size:6, color:'FF555555'});
-  ws.getCell(rowStart, colStart).value = 'PART NO.';
+  fillBorderFrame(ws, rowStart, colStart, COLORS[l.color] || COLORS.green);
 
-  ws.mergeCells(rowStart+1, colStart, rowStart+1, colStart+2);
-  const partnoCell = ws.getCell(rowStart+1, colStart);
-  partnoCell.value = l.partno;
-  styleCell(partnoCell, {size:14, bold:true});
+  const cr = rowStart + BORDER_ROWS; // content row start
+  const cc = colStart + BORDER_COLS; // content col start
+
+  centerAcross(ws, cr, cc, 3, 'PART NO.', {size:6, color:'FF555555'});
+  centerAcross(ws, cr+1, cc, 3, l.partno, {size:14, bold:true});
 
   ['FRONT VIEW','TOP VIEW','REAR VIEW'].forEach((h,i)=>{
-    const c = ws.getCell(rowStart+2, colStart+i);
+    const c = ws.getCell(cr+2, cc+i);
     c.value = h;
     styleCell(c, {size:6, color:'FF555555'});
   });
@@ -707,7 +757,7 @@ async function fillCard(workbook, ws, l, rowStart, colStart){
   const imgs = [l.frontImg, l.topImg, l.rearImg];
   for(let i=0; i<3; i++){
     const embedded = await imageForEmbed(imgs[i]);
-    const targetRow = rowStart+3, targetCol = colStart+i;
+    const targetRow = cr+3, targetCol = cc+i;
     if(embedded){
       const base64 = embedded.split(',')[1];
       const imgId = workbook.addImage({base64, extension:'jpeg'});
@@ -723,28 +773,28 @@ async function fillCard(workbook, ws, l, rowStart, colStart){
   }
 
   ['STATION','WASURENBO','CAR LINE'].forEach((h,i)=>{
-    const c = ws.getCell(rowStart+4, colStart+i);
+    const c = ws.getCell(cr+4, cc+i);
     c.value = h;
     styleCell(c, {size:6, color:'FF555555'});
   });
   [[l.station,9],[l.wasurenbo,9],[l.carline,7]].forEach(([val,size],i)=>{
-    const c = ws.getCell(rowStart+5, colStart+i);
+    const c = ws.getCell(cr+5, cc+i);
     c.value = val;
     styleCell(c, {size, bold:true});
   });
 
   ['MINI-STORE LOCATION','SEQUENCE','CONVEYOR'].forEach((h,i)=>{
-    const c = ws.getCell(rowStart+6, colStart+i);
+    const c = ws.getCell(cr+6, cc+i);
     c.value = h;
     styleCell(c, {size:6, color:'FF555555'});
   });
   [l.ministore, l.seq, l.conveyor].forEach((val,i)=>{
-    const c = ws.getCell(rowStart+7, colStart+i);
+    const c = ws.getCell(cr+7, cc+i);
     c.value = val;
     styleCell(c, {size:9, bold:true});
   });
 
-  applyCardBorder(ws, rowStart, colStart, COLORS[l.color] || COLORS.green);
+  applyContentGrid(ws, cr, cc);
 }
 
 async function buildVisualPages(workbook){
@@ -756,17 +806,18 @@ async function buildVisualPages(workbook){
       pageSetup: {orientation:'landscape', fitToPage:true, fitToWidth:1, fitToHeight:1, horizontalCentered:true, verticalCentered:true}
     });
     const cols = [];
-    for(let c0=0; c0<GRID_TOTAL_COLS; c0++) cols.push({width: colIsGutter(c0) ? 3 : 15});
+    for(let c0=0; c0<GRID_TOTAL_COLS; c0++) cols.push({width: colWidthAt(c0 % (CARD_COLS+GUTTER))});
     ws.columns = cols;
     for(let r0=0; r0<GRID_TOTAL_ROWS; r0++){
       const row = ws.getRow(r0+1);
-      row.height = rowIsGutter(r0) ? 6 : ROW_PATTERN[r0 % (CARD_ROWS+1)].height;
+      const h = rowHeightAt(r0 % (CARD_ROWS+GUTTER));
+      if(h !== null) row.height = h; // leave unset otherwise so Excel auto-fits the row
     }
     for(let idx=0; idx<chunk.length; idx++){
       const cardRowIdx = Math.floor(idx / CARDS_PER_ROW);
       const cardColIdx = idx % CARDS_PER_ROW;
-      const rowStart = cardRowIdx * (CARD_ROWS+1) + 1;
-      const colStart = cardColIdx * (CARD_COLS+1) + 1;
+      const rowStart = cardRowIdx * (CARD_ROWS+GUTTER) + 1;
+      const colStart = cardColIdx * (CARD_COLS+GUTTER) + 1;
       await fillCard(workbook, ws, chunk[idx], rowStart, colStart);
     }
   }
