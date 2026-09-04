@@ -599,26 +599,85 @@ document.getElementById('printBtn').addEventListener('click', ()=>{
  
 // ---- Save as Excel ----
 let lastExcelUrl = null;
-document.getElementById('saveExcelBtn').addEventListener('click', ()=>{
+
+// Excel cells cap out at 32,767 characters. A full-resolution photo's base64
+// data URL is almost always bigger than that, so before writing an image into
+// a cell we shrink + re-compress it via canvas, backing off in stages until
+// it fits (or giving up and leaving the cell blank if it truly won't fit).
+function shrinkImage(dataUrl, maxDim, quality){
+  return new Promise((resolve)=>{
+    if(!dataUrl){ resolve(null); return; }
+    const img = new Image();
+    img.onload = ()=>{
+      let w = img.naturalWidth, h = img.naturalHeight;
+      if(!w || !h){ resolve(null); return; }
+      if(w > maxDim || h > maxDim){
+        if(w >= h){ h = Math.max(1, Math.round(h * maxDim / w)); w = maxDim; }
+        else { w = Math.max(1, Math.round(w * maxDim / h)); h = maxDim; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0,0,w,h);
+      ctx.drawImage(img, 0, 0, w, h);
+      try{
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      }catch(e){
+        resolve(null);
+      }
+    };
+    img.onerror = ()=> resolve(null);
+    img.src = dataUrl;
+  });
+}
+const CELL_LIMIT = 30000; // stay safely under Excel's 32,767 char cell cap
+async function imageForCell(dataUrl){
+  if(!dataUrl) return '';
+  const stages = [[260,0.6],[180,0.45],[120,0.35],[80,0.25]];
+  for(const [maxDim, quality] of stages){
+    const shrunk = await shrinkImage(dataUrl, maxDim, quality);
+    if(shrunk && shrunk.length <= CELL_LIMIT) return shrunk;
+  }
+  return ''; // couldn't get it small enough — leave the cell blank rather than fail the whole export
+}
+
+document.getElementById('saveExcelBtn').addEventListener('click', async ()=>{
   if(labels.length===0){ alert('Add at least one label before saving.'); return; }
   if(typeof XLSX === 'undefined'){
     alert('The Excel library did not load (no internet connection?). Please check your connection and try again.');
     return;
   }
+  const saveBtn = document.getElementById('saveExcelBtn');
+  const originalText = saveBtn.textContent;
+  saveBtn.textContent = 'Preparing images…';
+  saveBtn.disabled = true;
   try{
-    const rows = labels.map(l=>({
-      'Part No.': l.partno,
-      'Sequence': l.seq,
-      'Border Color': l.color,
-      'Station': l.station,
-      'Wasurenbo': l.wasurenbo,
-      'Car Line': l.carline,
-      'Mini-store Location': l.ministore,
-      'Conveyor': l.conveyor,
-      'Front Image': l.frontImg || '',
-      'Top Image': l.topImg || '',
-      'Rear Image': l.rearImg || ''
-    }));
+    let droppedCount = 0;
+    const rows = [];
+    for(const l of labels){
+      const [frontImg, topImg, rearImg] = await Promise.all([
+        imageForCell(l.frontImg),
+        imageForCell(l.topImg),
+        imageForCell(l.rearImg)
+      ]);
+      if(l.frontImg && !frontImg) droppedCount++;
+      if(l.topImg && !topImg) droppedCount++;
+      if(l.rearImg && !rearImg) droppedCount++;
+      rows.push({
+        'Part No.': l.partno,
+        'Sequence': l.seq,
+        'Border Color': l.color,
+        'Station': l.station,
+        'Wasurenbo': l.wasurenbo,
+        'Car Line': l.carline,
+        'Mini-store Location': l.ministore,
+        'Conveyor': l.conveyor,
+        'Front Image': frontImg,
+        'Top Image': topImg,
+        'Rear Image': rearImg
+      });
+    }
     const ws = XLSX.utils.json_to_sheet(rows);
     ws['!cols'] = [
       {wch:16},{wch:8},{wch:10},{wch:14},{wch:10},{wch:20},{wch:18},{wch:10},{wch:12},{wch:12},{wch:12}
@@ -653,9 +712,16 @@ document.getElementById('saveExcelBtn').addEventListener('click', ()=>{
     fallback.download = filename;
     fallback.style.display = 'block';
     fallback.textContent = `⬇ Click here to download ${filename}`;
+
+    if(droppedCount > 0){
+      alert(`Saved, but ${droppedCount} photo(s) were too large even after compression and were left blank in the spreadsheet. Everything else (text fields and other photos) saved fine.`);
+    }
   }catch(err){
     console.error(err);
     alert('Could not build the Excel file: ' + err.message);
+  }finally{
+    saveBtn.textContent = originalText;
+    saveBtn.disabled = false;
   }
 });
  
