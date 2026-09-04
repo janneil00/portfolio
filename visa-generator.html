@@ -384,6 +384,7 @@
  
     <button class="btn btn-print" id="printBtn">Print</button>
     <button class="btn btn-excel" id="saveExcelBtn">Save as Excel</button>
+    <a id="excelFallbackLink" style="display:none;text-align:center;font-size:12px;margin-top:6px;color:#0f7a3d;font-weight:bold;">⬇ Click here to download the Excel file</a>
  
     <div class="field" style="margin-top:10px;">
       <label>Open saved Excel file</label>
@@ -597,33 +598,65 @@ document.getElementById('printBtn').addEventListener('click', ()=>{
 });
  
 // ---- Save as Excel ----
+let lastExcelUrl = null;
 document.getElementById('saveExcelBtn').addEventListener('click', ()=>{
   if(labels.length===0){ alert('Add at least one label before saving.'); return; }
   if(typeof XLSX === 'undefined'){
     alert('The Excel library did not load (no internet connection?). Please check your connection and try again.');
     return;
   }
-  const rows = labels.map(l=>({
-    'Part No.': l.partno,
-    'Sequence': l.seq,
-    'Border Color': l.color,
-    'Station': l.station,
-    'Wasurenbo': l.wasurenbo,
-    'Car Line': l.carline,
-    'Mini-store Location': l.ministore,
-    'Conveyor': l.conveyor,
-    'Front Image': l.frontImg || '',
-    'Top Image': l.topImg || '',
-    'Rear Image': l.rearImg || ''
-  }));
-  const ws = XLSX.utils.json_to_sheet(rows);
-  ws['!cols'] = [
-    {wch:16},{wch:8},{wch:10},{wch:14},{wch:10},{wch:20},{wch:18},{wch:10},{wch:12},{wch:12},{wch:12}
-  ];
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Labels');
-  const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
-  XLSX.writeFile(wb, `visa-labels-${stamp}.xlsx`);
+  try{
+    const rows = labels.map(l=>({
+      'Part No.': l.partno,
+      'Sequence': l.seq,
+      'Border Color': l.color,
+      'Station': l.station,
+      'Wasurenbo': l.wasurenbo,
+      'Car Line': l.carline,
+      'Mini-store Location': l.ministore,
+      'Conveyor': l.conveyor,
+      'Front Image': l.frontImg || '',
+      'Top Image': l.topImg || '',
+      'Rear Image': l.rearImg || ''
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = [
+      {wch:16},{wch:8},{wch:10},{wch:14},{wch:10},{wch:20},{wch:18},{wch:10},{wch:12},{wch:12},{wch:12}
+    ];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Labels');
+
+    // Build the file ourselves as a Blob rather than relying on XLSX.writeFile's
+    // auto-click download, which can get silently blocked inside a sandboxed preview.
+    const wbout = XLSX.write(wb, {bookType:'xlsx', type:'array'});
+    const blob = new Blob([wbout], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+    const filename = `visa-labels-${stamp}.xlsx`;
+
+    if(lastExcelUrl) URL.revokeObjectURL(lastExcelUrl);
+    const url = URL.createObjectURL(blob);
+    lastExcelUrl = url;
+
+    // Try the automatic download first.
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    // Always show a visible fallback link too — in a sandboxed preview the
+    // automatic click above may not actually trigger a download, but a real
+    // user click on this link will.
+    const fallback = document.getElementById('excelFallbackLink');
+    fallback.href = url;
+    fallback.download = filename;
+    fallback.style.display = 'block';
+    fallback.textContent = `⬇ Click here to download ${filename}`;
+  }catch(err){
+    console.error(err);
+    alert('Could not build the Excel file: ' + err.message);
+  }
 });
  
 // ---- Open saved Excel ----
