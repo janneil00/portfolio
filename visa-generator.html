@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <title>VISA Label Generator</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <style>
   :root{
     --green:#2f9e44;
@@ -391,7 +392,7 @@
       <div class="imgfield">
         <input type="file" accept=".xlsx,.xls" id="openExcelInput">
       </div>
-      <p class="hint">Loads labels back onto the sheet from a file previously saved with "Save as Excel". Note: very large photos may not round-trip perfectly since Excel cells have a size limit — small/medium images work best.</p>
+      <p class="hint">Loads labels back onto the sheet from a file previously saved with "Save as Excel". Each saved file looks like the printed sheet (with real photos and colored borders) and also keeps a hidden "Data" tab that this Open feature reads from to restore everything exactly.</p>
     </div>
  
     <button class="btn btn-clear" id="clearBtn">Clear all labels</button>
@@ -597,13 +598,13 @@ document.getElementById('printBtn').addEventListener('click', ()=>{
   window.print();
 });
  
-// ---- Save as Excel ----
+// ---- Save as Excel (visual — mirrors the printed sheet) ----
 let lastExcelUrl = null;
 
-// Excel cells cap out at 32,767 characters. A full-resolution photo's base64
-// data URL is almost always bigger than that, so before writing an image into
-// a cell we shrink + re-compress it via canvas, backing off in stages until
-// it fits (or giving up and leaving the cell blank if it truly won't fit).
+// Resize/re-compress an image via canvas. Used both to shrink embedded
+// photos to a sane file size and (at a lower quality) to shrink the text
+// copies stored in the hidden Data sheet, which — being plain cell text —
+// are capped at Excel's 32,767 character-per-cell limit.
 function shrinkImage(dataUrl, maxDim, quality){
   return new Promise((resolve)=>{
     if(!dataUrl){ resolve(null); return; }
@@ -621,74 +622,185 @@ function shrinkImage(dataUrl, maxDim, quality){
       ctx.fillStyle = '#fff';
       ctx.fillRect(0,0,w,h);
       ctx.drawImage(img, 0, 0, w, h);
-      try{
-        resolve(canvas.toDataURL('image/jpeg', quality));
-      }catch(e){
-        resolve(null);
-      }
+      try{ resolve(canvas.toDataURL('image/jpeg', quality)); }
+      catch(e){ resolve(null); }
     };
     img.onerror = ()=> resolve(null);
     img.src = dataUrl;
   });
 }
 const CELL_LIMIT = 30000; // stay safely under Excel's 32,767 char cell cap
-async function imageForCell(dataUrl){
+async function imageForDataCell(dataUrl){
   if(!dataUrl) return '';
   const stages = [[260,0.6],[180,0.45],[120,0.35],[80,0.25]];
   for(const [maxDim, quality] of stages){
     const shrunk = await shrinkImage(dataUrl, maxDim, quality);
     if(shrunk && shrunk.length <= CELL_LIMIT) return shrunk;
   }
-  return ''; // couldn't get it small enough — leave the cell blank rather than fail the whole export
+  return '';
+}
+// Embedded images are media, not cell text, so they aren't subject to the
+// 32,767-char cell cap — we just shrink them for a reasonable file size.
+async function imageForEmbed(dataUrl){
+  if(!dataUrl) return null;
+  return await shrinkImage(dataUrl, 700, 0.85);
+}
+
+// ---- card grid geometry (mirrors the 3x3-per-page print layout) ----
+const CARD_ROWS = 8;      // rows used by one label card
+const CARD_COLS = 3;      // columns used by one label card
+const CARDS_PER_ROW = 3;
+const CARDS_PER_COL = 3;
+const GRID_TOTAL_COLS = CARDS_PER_ROW * (CARD_COLS + 1) - 1; // + gutter cols, no trailing gutter
+const GRID_TOTAL_ROWS = CARDS_PER_COL * (CARD_ROWS + 1) - 1; // + gutter rows, no trailing gutter
+const ROW_PATTERN = [
+  {height:11}, // 0 "PART NO." header
+  {height:22}, // 1 part number value
+  {height:11}, // 2 FRONT/TOP/REAR headers
+  {height:58}, // 3 images
+  {height:11}, // 4 STATION/WASURENBO/CAR LINE headers
+  {height:16}, // 5 values
+  {height:11}, // 6 MINI-STORE/SEQUENCE/CONVEYOR headers
+  {height:16}  // 7 values
+];
+function colIsGutter(c0){ return (c0 % (CARD_COLS + 1)) === CARD_COLS; }
+function rowIsGutter(r0){ return (r0 % (CARD_ROWS + 1)) === CARD_ROWS; }
+function argbFromHex(hex){ return 'FF' + hex.replace('#','').toUpperCase(); }
+
+function styleCell(cell, {size=9, bold=false, color='FF000000', italic=false}={}){
+  cell.font = {size, bold, italic, color:{argb:color}};
+  cell.alignment = {horizontal:'center', vertical:'middle', wrapText:true};
+}
+
+function applyCardBorder(ws, rowStart, colStart, colorHex){
+  const thick = {style:'thick', color:{argb:argbFromHex(colorHex)}};
+  const thin = {style:'thin', color:{argb:'FF000000'}};
+  for(let r=0; r<CARD_ROWS; r++){
+    for(let c=0; c<CARD_COLS; c++){
+      const cell = ws.getCell(rowStart+r, colStart+c);
+      cell.border = {
+        top: r===0 ? thick : thin,
+        bottom: r===CARD_ROWS-1 ? thick : thin,
+        left: c===0 ? thick : thin,
+        right: c===CARD_COLS-1 ? thick : thin
+      };
+    }
+  }
+}
+
+async function fillCard(workbook, ws, l, rowStart, colStart){
+  ws.mergeCells(rowStart, colStart, rowStart, colStart+2);
+  styleCell(ws.getCell(rowStart, colStart), {size:6, color:'FF555555'});
+  ws.getCell(rowStart, colStart).value = 'PART NO.';
+
+  ws.mergeCells(rowStart+1, colStart, rowStart+1, colStart+2);
+  const partnoCell = ws.getCell(rowStart+1, colStart);
+  partnoCell.value = l.partno;
+  styleCell(partnoCell, {size:14, bold:true});
+
+  ['FRONT VIEW','TOP VIEW','REAR VIEW'].forEach((h,i)=>{
+    const c = ws.getCell(rowStart+2, colStart+i);
+    c.value = h;
+    styleCell(c, {size:6, color:'FF555555'});
+  });
+
+  const imgs = [l.frontImg, l.topImg, l.rearImg];
+  for(let i=0; i<3; i++){
+    const embedded = await imageForEmbed(imgs[i]);
+    const targetRow = rowStart+3, targetCol = colStart+i;
+    if(embedded){
+      const base64 = embedded.split(',')[1];
+      const imgId = workbook.addImage({base64, extension:'jpeg'});
+      ws.addImage(imgId, {
+        tl: {col: targetCol-1+0.06, row: targetRow-1+0.06},
+        ext: {width: 95, height: 66}
+      });
+    } else {
+      const c = ws.getCell(targetRow, targetCol);
+      c.value = 'no image';
+      styleCell(c, {size:7, italic:true, color:'FFBBBBBB'});
+    }
+  }
+
+  ['STATION','WASURENBO','CAR LINE'].forEach((h,i)=>{
+    const c = ws.getCell(rowStart+4, colStart+i);
+    c.value = h;
+    styleCell(c, {size:6, color:'FF555555'});
+  });
+  [[l.station,9],[l.wasurenbo,9],[l.carline,7]].forEach(([val,size],i)=>{
+    const c = ws.getCell(rowStart+5, colStart+i);
+    c.value = val;
+    styleCell(c, {size, bold:true});
+  });
+
+  ['MINI-STORE LOCATION','SEQUENCE','CONVEYOR'].forEach((h,i)=>{
+    const c = ws.getCell(rowStart+6, colStart+i);
+    c.value = h;
+    styleCell(c, {size:6, color:'FF555555'});
+  });
+  [l.ministore, l.seq, l.conveyor].forEach((val,i)=>{
+    const c = ws.getCell(rowStart+7, colStart+i);
+    c.value = val;
+    styleCell(c, {size:9, bold:true});
+  });
+
+  applyCardBorder(ws, rowStart, colStart, COLORS[l.color] || COLORS.green);
+}
+
+async function buildVisualPages(workbook){
+  const perPage = CARDS_PER_ROW * CARDS_PER_COL;
+  const totalPages = Math.ceil(labels.length / perPage);
+  for(let p=0; p<totalPages; p++){
+    const chunk = labels.slice(p*perPage, p*perPage+perPage);
+    const ws = workbook.addWorksheet(`Page ${p+1}`, {
+      pageSetup: {orientation:'landscape', fitToPage:true, fitToWidth:1, fitToHeight:1, horizontalCentered:true, verticalCentered:true}
+    });
+    const cols = [];
+    for(let c0=0; c0<GRID_TOTAL_COLS; c0++) cols.push({width: colIsGutter(c0) ? 3 : 15});
+    ws.columns = cols;
+    for(let r0=0; r0<GRID_TOTAL_ROWS; r0++){
+      const row = ws.getRow(r0+1);
+      row.height = rowIsGutter(r0) ? 6 : ROW_PATTERN[r0 % (CARD_ROWS+1)].height;
+    }
+    for(let idx=0; idx<chunk.length; idx++){
+      const cardRowIdx = Math.floor(idx / CARDS_PER_ROW);
+      const cardColIdx = idx % CARDS_PER_ROW;
+      const rowStart = cardRowIdx * (CARD_ROWS+1) + 1;
+      const colStart = cardColIdx * (CARD_COLS+1) + 1;
+      await fillCard(workbook, ws, chunk[idx], rowStart, colStart);
+    }
+  }
+}
+
+async function buildDataSheet(workbook){
+  const ws = workbook.addWorksheet('Data');
+  ws.state = 'hidden'; // kept so "Open saved Excel file" can reliably re-load labels later
+  ws.addRow(['Part No.','Sequence','Border Color','Station','Wasurenbo','Car Line','Mini-store Location','Conveyor','Front Image','Top Image','Rear Image']);
+  for(const l of labels){
+    const [frontImg, topImg, rearImg] = await Promise.all([
+      imageForDataCell(l.frontImg), imageForDataCell(l.topImg), imageForDataCell(l.rearImg)
+    ]);
+    ws.addRow([l.partno, l.seq, l.color, l.station, l.wasurenbo, l.carline, l.ministore, l.conveyor, frontImg, topImg, rearImg]);
+  }
 }
 
 document.getElementById('saveExcelBtn').addEventListener('click', async ()=>{
   if(labels.length===0){ alert('Add at least one label before saving.'); return; }
-  if(typeof XLSX === 'undefined'){
+  if(typeof ExcelJS === 'undefined'){
     alert('The Excel library did not load (no internet connection?). Please check your connection and try again.');
     return;
   }
   const saveBtn = document.getElementById('saveExcelBtn');
   const originalText = saveBtn.textContent;
-  saveBtn.textContent = 'Preparing images…';
+  saveBtn.textContent = 'Building sheet…';
   saveBtn.disabled = true;
   try{
-    let droppedCount = 0;
-    const rows = [];
-    for(const l of labels){
-      const [frontImg, topImg, rearImg] = await Promise.all([
-        imageForCell(l.frontImg),
-        imageForCell(l.topImg),
-        imageForCell(l.rearImg)
-      ]);
-      if(l.frontImg && !frontImg) droppedCount++;
-      if(l.topImg && !topImg) droppedCount++;
-      if(l.rearImg && !rearImg) droppedCount++;
-      rows.push({
-        'Part No.': l.partno,
-        'Sequence': l.seq,
-        'Border Color': l.color,
-        'Station': l.station,
-        'Wasurenbo': l.wasurenbo,
-        'Car Line': l.carline,
-        'Mini-store Location': l.ministore,
-        'Conveyor': l.conveyor,
-        'Front Image': frontImg,
-        'Top Image': topImg,
-        'Rear Image': rearImg
-      });
-    }
-    const ws = XLSX.utils.json_to_sheet(rows);
-    ws['!cols'] = [
-      {wch:16},{wch:8},{wch:10},{wch:14},{wch:10},{wch:20},{wch:18},{wch:10},{wch:12},{wch:12},{wch:12}
-    ];
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Labels');
+    const workbook = new ExcelJS.Workbook();
+    await buildVisualPages(workbook);
+    await buildDataSheet(workbook);
 
-    // Build the file ourselves as a Blob rather than relying on XLSX.writeFile's
-    // auto-click download, which can get silently blocked inside a sandboxed preview.
-    const wbout = XLSX.write(wb, {bookType:'xlsx', type:'array'});
-    const blob = new Blob([wbout], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
     const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
     const filename = `visa-labels-${stamp}.xlsx`;
 
@@ -712,10 +824,6 @@ document.getElementById('saveExcelBtn').addEventListener('click', async ()=>{
     fallback.download = filename;
     fallback.style.display = 'block';
     fallback.textContent = `⬇ Click here to download ${filename}`;
-
-    if(droppedCount > 0){
-      alert(`Saved, but ${droppedCount} photo(s) were too large even after compression and were left blank in the spreadsheet. Everything else (text fields and other photos) saved fine.`);
-    }
   }catch(err){
     console.error(err);
     alert('Could not build the Excel file: ' + err.message);
@@ -739,7 +847,11 @@ document.getElementById('openExcelInput').addEventListener('change', (e)=>{
     try{
       const data = new Uint8Array(evt.target.result);
       const wb = XLSX.read(data, {type:'array'});
-      const sheet = wb.Sheets[wb.SheetNames[0]];
+      // Newer exports keep the raw label data in a hidden "Data" sheet
+      // (the visible sheets are the print-style visual pages instead).
+      // Fall back to the first sheet for files saved before that existed.
+      const sheetName = wb.SheetNames.includes('Data') ? 'Data' : wb.SheetNames[0];
+      const sheet = wb.Sheets[sheetName];
       const rows = XLSX.utils.sheet_to_json(sheet, {defval:''});
       const loaded = rows
         .filter(r => String(r['Part No.']||'').trim() !== '')
